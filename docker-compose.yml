@@ -1,0 +1,5 @@
+version: '3.5'
+services:
+  broadlinkac2mqtt:
+    build: .
+    restart: on-failure

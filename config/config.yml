@@ -1,0 +1,20 @@
+service:
+  update_interval: 10 #Seconds
+  log_level: error
+
+mqtt:
+  port: 1883
+  host: 192.168.1.36
+  user: admin
+  password: password
+  client_id: aircac2
+  topic_prefix: aircon2
+  auto_discovery_topic: homeassistant
+  auto_discovery_topic_retain: false
+  auto_discovery: true
+
+devices:
+  - ip: 192.168.1.12
+    mac: 34ea345b0fd4
+    name: MH Childroom AC
+    port: 80
