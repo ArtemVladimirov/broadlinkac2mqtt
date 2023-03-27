@@ -65,7 +65,6 @@ Example of config.yml
 
 ```
    docker run -d --name="broadlinkac2mqtt" -v /PATH_TO_YOUR_CONFIG:/config --restart always ghcr.io/artemvladimirov/broadlinkac2mqtt:latest   
-
 ```
 
 ### Standalone application
