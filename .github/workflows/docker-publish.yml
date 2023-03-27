@@ -32,11 +32,14 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata for the Docker image
-      id: meta
-      uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+    - name: Docker meta
+      id: docker_meta
+      uses: crazy-max/ghaction-docker-meta@v1
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+       images: l7r7/sample
+       tag-custom: latest
+       tag-semver: |
+        {{raw}}
 
     - name: Build and push the Docker image
       uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
