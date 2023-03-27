@@ -5,11 +5,11 @@ Control your broadlink-based air conditioner using Home Assistant
 
 ## Advantages
 
-    * Small application size (~10.2 Mb docker, ~8.2 Mb Windows Standalone)
-    * Easy to install and use
-    * Support all platforms
-    * Parallel independent air conditioning support.  I
-      If one air conditioner is offline, it will not affect the rest!
+* Small application size (~10.2 Mb docker, ~8.2 Mb Windows Standalone)
+* Easy to install and use
+* Support all platforms
+* Parallel independent air conditioning support.
+  If one air conditioner is offline, it will not affect the rest!
 
 ## Configuration
 
