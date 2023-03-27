@@ -38,6 +38,10 @@ Example of config.yml
         mac: 34ea345b0fd4   # Only this format is supported
         name: Childroom AC
         port: 80 
+      - ip: 192.168.1.18
+        mac: 34ea346b0mks   # Only this format is supported
+        name: Bedroom AC
+        port: 80 
 
 ```
 
@@ -57,13 +61,16 @@ Example of config.yml
 
 ```
 
+### Docker
+
+```
+   docker run -d --name="broadlinkac2mqtt" -v /PATH_TO_YOUR_CONFIG:/config --restart always ghcr.io/artemvladimirov/broadlinkac2mqtt:latest   
+
+```
+
 ### Standalone application
 
-Download application from releases or build it with command 
-
-```
-    go build
-```
+Download application from releases or build it with command "go build". Then you can run a program. The config folder must be located in the program folder
 
 ## Support
 
