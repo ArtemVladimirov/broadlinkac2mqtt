@@ -49,7 +49,7 @@ Example of config.yml
     version: '3.5'
     services:
       broadlinkac2mqtt:
-        image: "ghcr.io/artvladimirov/broadlinkac2mqtt:latest"
+        image: "ghcr.io/artemvladimirov/broadlinkac2mqtt:latest"
         container_name: "broadlinkac2mqtt"
         restart: "on-failure"
         volumes:
