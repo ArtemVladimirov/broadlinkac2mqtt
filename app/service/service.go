@@ -389,6 +389,11 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 		Clean:              response.Payload[18] >> 2 & 0b00000001,
 	}
 
+	if raw.Temperature < 16.0 {
+		logger.Error().Err(err).Str("device", input.Mac).Float32("temperature", raw.Temperature).Msg("Wrong temperature, skip package")
+		return models.ErrorInvalidResultPacketLength
+	}
+
 	//////////////////////////////////////////////////////////////////
 	// Comparison of Home Assistant statuses and BroadLink statuses //
 	//////////////////////////////////////////////////////////////////
@@ -991,12 +996,23 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 
 func (s *service) UpdateDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models.UpdateDeviceAvailabilityInput) error {
 
+	upsertDeviceAvailabilityInput := &models_repo.UpsertDeviceAvailabilityInput{
+		Mac:          input.Mac,
+		Availability: input.Availability,
+	}
+
+	err := s.cache.UpsertDeviceAvailability(ctx, logger, upsertDeviceAvailabilityInput)
+	if err != nil {
+		logger.Error().Interface("input", upsertDeviceAvailabilityInput).Str("device", input.Mac).Msg("failed to upsert device availability")
+		return err
+	}
+
 	publishAvailabilityInput := &models_mqtt.PublishAvailabilityInput{
 		Mac:          input.Mac,
 		Availability: input.Availability,
 	}
 
-	err := s.mqtt.PublishAvailability(ctx, logger, publishAvailabilityInput)
+	err = s.mqtt.PublishAvailability(ctx, logger, publishAvailabilityInput)
 	if err != nil {
 		logger.Error().Interface("input", publishAvailabilityInput).Str("device", input.Mac).Msg("failed to create command payload")
 		return err
@@ -1161,4 +1177,178 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 
 		time.Sleep(time.Millisecond * 500)
 	}
+}
+
+func (s *service) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models.GetStatesOnHomeAssistantRestartInput) error {
+
+	if input.Status != "online" {
+		return nil
+	}
+
+	readAuthedDevicesReturn, err := s.cache.ReadAuthedDevices(ctx, logger)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to read authed devices")
+		return err
+	}
+
+	for _, mac := range readAuthedDevicesReturn.Macs {
+
+		/////////////////////////////////
+		// Read all states and configs //
+		/////////////////////////////////
+
+		readDeviceStatusInput := &models_repo.ReadDeviceStatusInput{
+			Mac: mac,
+		}
+
+		readDeviceStatusReturn, err := s.cache.ReadDeviceStatus(ctx, logger, readDeviceStatusInput)
+		if err != nil {
+			logger.Error().Err(err).Interface("input", readDeviceStatusInput).Msg("Failed to read the device status")
+			return err
+		}
+
+		readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: mac}
+
+		readAmbientTempReturn, err := s.cache.ReadAmbientTemp(ctx, logger, readAmbientTempInput)
+		if err != nil {
+			logger.Error().Interface("input", readAmbientTempInput).Str("device", mac).Msg("failed to read the ambient temperature")
+			return err
+		}
+
+		readDeviceAvailabilityInput := &models_repo.ReadDeviceAvailabilityInput{Mac: mac}
+
+		readDeviceAvailabilityReturn, err := s.cache.ReadDeviceAvailability(ctx, logger, readDeviceAvailabilityInput)
+		if err != nil {
+			logger.Error().Interface("input", readDeviceAvailabilityInput).Str("device", mac).Msg("failed to read the device availability")
+			return err
+		}
+
+		readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+			Mac: mac,
+		}
+
+		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+		if err != nil {
+			logger.Error().Interface("input", input).Msg("failed to read device config")
+			return err
+		}
+
+		/////////////////////////////////
+		// 		Publish all topics     //
+		/////////////////////////////////
+
+		err = s.PublishDiscoveryTopic(ctx, logger, &models.PublishDiscoveryTopicInput{Device: readDeviceConfigReturn.Config})
+		if err != nil {
+			logger.Error().Interface("device", mac).Msg("failed to publish the discovery topic")
+			return err
+		}
+
+		time.Sleep(time.Millisecond * 500)
+
+		g := new(errgroup.Group)
+
+		g.Go(func() error {
+			publishAvailabilityInput := &models_mqtt.PublishAvailabilityInput{
+				Mac:          mac,
+				Availability: readDeviceAvailabilityReturn.Availability,
+			}
+
+			err := s.mqtt.PublishAvailability(ctx, logger, publishAvailabilityInput)
+			if err != nil {
+				logger.Error().Interface("input", publishAvailabilityInput).Str("device", mac).Msg("failed to create command payload")
+				return err
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+
+			// Sent  temperature to MQTT
+			publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
+				Mac:         mac,
+				Temperature: readAmbientTempReturn.Temperature,
+			}
+
+			err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
+			if err != nil {
+				logger.Error().Interface("input", publishAmbientTempInput).Msg("failed to publish ambient temperature")
+				return err
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+
+			publishTemperatureInput := &models_mqtt.PublishTemperatureInput{
+				Mac:         mac,
+				Temperature: readDeviceStatusReturn.Status.Temperature,
+			}
+
+			err = s.mqtt.PublishTemperature(ctx, logger, publishTemperatureInput)
+			if err != nil {
+				logger.Error().Err(err).Interface("input", publishTemperatureInput).Msg("Failed to publish the device set temperature")
+				return err
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+
+			publishModeInput := &models_mqtt.PublishModeInput{
+				Mac:  mac,
+				Mode: readDeviceStatusReturn.Status.Mode,
+			}
+
+			err = s.mqtt.PublishMode(ctx, logger, publishModeInput)
+			if err != nil {
+				logger.Error().Err(err).Interface("input", publishModeInput).Msg("Failed to publish the device mode")
+				return err
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+
+			publishFanModeInput := &models_mqtt.PublishFanModeInput{
+				Mac:     mac,
+				FanMode: readDeviceStatusReturn.Status.FanMode,
+			}
+
+			err = s.mqtt.PublishFanMode(ctx, logger, publishFanModeInput)
+			if err != nil {
+				logger.Error().Err(err).Interface("input", publishFanModeInput).Msg("Failed to publish the device fan mode")
+				return err
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+
+			publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
+				Mac:       mac,
+				SwingMode: readDeviceStatusReturn.Status.SwingMode,
+			}
+
+			err = s.mqtt.PublishSwingMode(ctx, logger, publishSwingModeInput)
+			if err != nil {
+				logger.Error().Err(err).Interface("input", publishSwingModeInput).Msg("Failed to publish the device swing mode")
+				return err
+			}
+
+			return nil
+		})
+
+		// Wait for all HTTP fetches to complete.
+		if err = g.Wait(); err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 }

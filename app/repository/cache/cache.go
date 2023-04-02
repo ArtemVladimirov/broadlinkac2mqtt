@@ -13,9 +13,10 @@ type cache struct {
 	// Storage for converted states
 	deviceStatusMqtt map[string]models_service.DeviceStatusMqtt
 	// Storages for last received states from ac
-	deviceStatusRaw map[string]models_service.DeviceStatusRaw
-	ambientTemp     map[string]int8
-	// Storages for last mqtt message
+	deviceStatusRaw    map[string]models_service.DeviceStatusRaw
+	deviceAvailability map[string]string
+	ambientTemp        map[string]int8
+	// Storages for the last mqtt message
 	mqttModeMessages        map[string]models.MqttModeMessage
 	mqttFanModeMessages     map[string]models.MqttFanModeMessage
 	mqttSwingModeMessages   map[string]models.MqttSwingModeMessage
@@ -32,6 +33,7 @@ func NewCache() *cache {
 	mqttFanModeMessages := make(map[string]models.MqttFanModeMessage)
 	mqttSwingModeMessages := make(map[string]models.MqttSwingModeMessage)
 	mqttTemperatureMessages := make(map[string]models.MqttTemperatureMessage)
+	deviceAvailability := make(map[string]string)
 
 	return &cache{
 		deviceAuth:              deviceAuth,
@@ -43,6 +45,7 @@ func NewCache() *cache {
 		mqttFanModeMessages:     mqttFanModeMessages,
 		mqttSwingModeMessages:   mqttSwingModeMessages,
 		mqttTemperatureMessages: mqttTemperatureMessages,
+		deviceAvailability:      deviceAvailability,
 	}
 }
 
@@ -167,4 +170,30 @@ func (c *cache) ReadMqttMessage(ctx context.Context, logger *zerolog.Logger, inp
 	}
 
 	return &state, nil
+}
+
+func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceAvailabilityInput) error {
+	c.deviceAvailability[input.Mac] = input.Availability
+	return nil
+}
+
+func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceAvailabilityInput) (*models.ReadDeviceAvailabilityReturn, error) {
+
+	availability, ok := c.deviceAvailability[input.Mac]
+	if !ok {
+		message := "device availability is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceNotFound
+	}
+	return &models.ReadDeviceAvailabilityReturn{Availability: availability}, nil
+}
+
+func (c *cache) ReadAuthedDevices(ctx context.Context, logger *zerolog.Logger) (*models.ReadAuthedDevicesReturn, error) {
+	var macs []string
+
+	for mac := range c.deviceAuth {
+		macs = append(macs, mac)
+	}
+
+	return &models.ReadAuthedDevicesReturn{Macs: macs}, nil
 }

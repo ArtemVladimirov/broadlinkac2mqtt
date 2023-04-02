@@ -123,3 +123,7 @@ type UpdateDeviceAvailabilityInput struct {
 type StartDeviceMonitoringInput struct {
 	Mac string
 }
+
+type GetStatesOnHomeAssistantRestartInput struct {
+	Status string
+}

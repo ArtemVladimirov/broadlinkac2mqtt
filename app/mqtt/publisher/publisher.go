@@ -27,7 +27,7 @@ func NewMqttSender(mqttConfig models.ConfigMqtt, client paho.Client) *mqttPublis
 
 func (m *mqttPublisher) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishDiscoveryTopicInput) error {
 
-	if m.mqttConfig.AutoDiscovery == false {
+	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
 	}
 
@@ -36,7 +36,7 @@ func (m *mqttPublisher) PublishDiscoveryTopic(ctx context.Context, logger *zerol
 		logger.Error().Err(err).Interface("input", input.DiscoveryTopic).Msg("Failed to marshal discovery topic")
 	}
 
-	topic := m.mqttConfig.AutoDiscoveryTopic + "/" + deviceClass + "/" + input.DiscoveryTopic.UniqueId + "/config"
+	topic := *m.mqttConfig.AutoDiscoveryTopic + "/" + deviceClass + "/" + input.DiscoveryTopic.UniqueId + "/config"
 	m.client.Publish(topic, 0, m.mqttConfig.AutoDiscoveryTopicRetain, string(payload))
 
 	return nil

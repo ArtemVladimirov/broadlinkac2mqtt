@@ -25,6 +25,7 @@ import (
 
 type App struct {
 	devices             []workspaceServiceModels.DeviceConfig
+	autoDiscoveryTopic  *string
 	topicPrefix         string
 	wsBroadLinkReceiver app.WebClient
 	wsMqttReceiver      app.MqttSubscriber
@@ -62,7 +63,6 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 		Password:                 cfg.Mqtt.Password,
 		ClientId:                 cfg.Mqtt.ClientId,
 		TopicPrefix:              cfg.Mqtt.TopicPrefix,
-		AutoDiscovery:            cfg.Mqtt.AutoDiscovery,
 		AutoDiscoveryTopic:       cfg.Mqtt.AutoDiscoveryTopic,
 		AutoDiscoveryTopicRetain: cfg.Mqtt.AutoDiscoveryTopicRetain,
 	}
@@ -112,11 +112,12 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 	}
 
 	application := &App{
-		wsMqttReceiver: mqttReceiver,
-		client:         client,
-		devices:        devices,
-		wsService:      service,
-		topicPrefix:    cfg.Mqtt.TopicPrefix,
+		wsMqttReceiver:     mqttReceiver,
+		client:             client,
+		devices:            devices,
+		wsService:          service,
+		topicPrefix:        cfg.Mqtt.TopicPrefix,
+		autoDiscoveryTopic: cfg.Mqtt.AutoDiscoveryTopic,
 	}
 
 	return application, nil
@@ -130,6 +131,16 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 		if err != nil {
 			logger.Error().Msg("Failed to connect mqtt")
 			return err
+		}
+	}
+
+	if app.autoDiscoveryTopic != nil {
+		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(logger)); token.Wait() && token.Error() != nil {
+			err := token.Error()
+			if err != nil {
+				logger.Error().Msg("Failed to subscribe on LWT")
+				return err
+			}
 		}
 	}
 
@@ -164,12 +175,14 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 			workspaceMqttReceiver.Routers(logger, device.Mac, app.topicPrefix, app.client, app.wsMqttReceiver)
 
 			//Publish Discovery Topic
-			err := app.wsService.PublishDiscoveryTopic(ctx, logger, &workspaceServiceModels.PublishDiscoveryTopicInput{Device: device})
-			if err != nil {
-				return
+			if app.autoDiscoveryTopic != nil {
+				err := app.wsService.PublishDiscoveryTopic(ctx, logger, &workspaceServiceModels.PublishDiscoveryTopicInput{Device: device})
+				if err != nil {
+					return
+				}
 			}
 
-			err = app.wsService.StartDeviceMonitoring(ctx, logger, &workspaceServiceModels.StartDeviceMonitoringInput{Mac: device.Mac})
+			err := app.wsService.StartDeviceMonitoring(ctx, logger, &workspaceServiceModels.StartDeviceMonitoringInput{Mac: device.Mac})
 			if err != nil {
 				return
 			}
