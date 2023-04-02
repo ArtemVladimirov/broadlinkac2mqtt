@@ -105,3 +105,20 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(logger *zerolog.Logger) m
 		}
 	})
 }
+
+func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(logger *zerolog.Logger) mqtt.MessageHandler {
+	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+
+		logger.Debug().Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new home assistant LWT message")
+
+		getStatesOnHomeAssistantRestartInput := &models_service.GetStatesOnHomeAssistantRestartInput{
+			Status: string(msg.Payload()),
+		}
+
+		err := m.service.GetStatesOnHomeAssistantRestart(context.TODO(), logger, getStatesOnHomeAssistantRestartInput)
+		if err != nil {
+			logger.Error().Err(err).Interface("input", getStatesOnHomeAssistantRestartInput).Msg("failed to get states")
+			return
+		}
+	})
+}

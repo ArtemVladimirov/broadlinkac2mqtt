@@ -6,9 +6,8 @@ type ConfigMqtt struct {
 	Password                 *string
 	ClientId                 string
 	TopicPrefix              string
-	AutoDiscoveryTopic       string
+	AutoDiscoveryTopic       *string
 	AutoDiscoveryTopicRetain bool
-	AutoDiscovery            bool
 }
 
 type DiscoveryTopic struct {

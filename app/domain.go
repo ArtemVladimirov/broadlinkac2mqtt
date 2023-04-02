@@ -15,6 +15,8 @@ type MqttSubscriber interface {
 	UpdateSwingModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
 	UpdateModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
 	UpdateTemperatureCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
+
+	GetStatesOnHomeAssistantRestart(logger *zerolog.Logger) mqtt.MessageHandler
 }
 
 type MqttPublisher interface {
@@ -42,6 +44,8 @@ type Service interface {
 	UpdateDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateDeviceAvailabilityInput) error
 
 	StartDeviceMonitoring(ctx context.Context, logger *zerolog.Logger, input *models_service.StartDeviceMonitoringInput) error
+
+	GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models_service.GetStatesOnHomeAssistantRestartInput) error
 }
 
 type WebClient interface {
@@ -70,4 +74,9 @@ type Cache interface {
 	UpsertMqttTemperatureMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertMqttTemperatureMessageInput) error
 
 	ReadMqttMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadMqttMessageInput) (*models_cache.ReadMqttMessageReturn, error)
+
+	UpsertDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertDeviceAvailabilityInput) error
+	ReadDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadDeviceAvailabilityInput) (*models_cache.ReadDeviceAvailabilityReturn, error)
+
+	ReadAuthedDevices(ctx context.Context, logger *zerolog.Logger) (*models_cache.ReadAuthedDevicesReturn, error)
 }

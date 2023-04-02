@@ -29,9 +29,8 @@ Example of config.yml
       password: password                    # Optional    
       client_id: airac                      # Default: broadlinkac
       topic_prefix: aircon                  # Default: airac
-      auto_discovery_topic: homeassistant   # Default: homeassistant
+      auto_discovery_topic: homeassistant   # Optional
       auto_discovery_topic_retain: false    # Default: true
-      auto_discovery: true                  # Default: true
       certificate_authority: "./config/cert/ca.crt" # Optional. CA certificate in CRT format.
       skip_cert_cn_check: false             # Default: true. Don’t verify if the common name in the server certificate matches the value of broker.
       ## Authorization using client certificates

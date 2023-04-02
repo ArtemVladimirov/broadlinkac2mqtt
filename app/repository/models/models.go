@@ -119,3 +119,20 @@ type ReadMqttMessageReturn struct {
 	FanMode     *MqttFanModeMessage
 	Mode        *MqttModeMessage
 }
+
+type UpsertDeviceAvailabilityInput struct {
+	Mac          string
+	Availability string
+}
+
+type ReadDeviceAvailabilityInput struct {
+	Mac string
+}
+
+type ReadDeviceAvailabilityReturn struct {
+	Availability string
+}
+
+type ReadAuthedDevicesReturn struct {
+	Macs []string
+}
