@@ -1,8 +1,7 @@
 package models
 
 type ConfigMqtt struct {
-	Host                     string
-	Port                     uint16
+	Broker                   string
 	User                     *string
 	Password                 *string
 	ClientId                 string

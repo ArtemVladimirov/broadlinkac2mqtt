@@ -21,15 +21,18 @@ type (
 	}
 
 	Mqtt struct {
-		Host                     string  `env-required:"true"            yaml:"host"`
-		Port                     uint16  `env-default:"1883"             yaml:"port"`
-		User                     *string `env-required:"false"           yaml:"user"`
-		Password                 *string `env-required:"false"           yaml:"password"`
+		Broker                   string  `env-required:"true"            yaml:"broker"`
+		User                     *string `yaml:"user"`
+		Password                 *string `yaml:"password"`
 		ClientId                 string  `env-default:"broadlinkac"      yaml:"client_id"`
 		TopicPrefix              string  `env-default:"airac"            yaml:"topic_prefix"`
 		AutoDiscoveryTopic       string  `env-default:"homeassistant"    yaml:"auto_discovery_topic"`
 		AutoDiscoveryTopicRetain bool    `env-default:"true"             yaml:"auto_discovery_topic_retain"`
 		AutoDiscovery            bool    `env-default:"true"             yaml:"auto_discovery"`
+		CertificateAuthority     *string `yaml:"certificate_authority"`
+		SkipCertCnCheck          bool    `env-default:"true"            yaml:"skip_cert_cn_check"`
+		CertificateClient        *string `yaml:"certificate_client"`
+		KeyClient                *string `yaml:"key-client"`
 	}
 
 	Devices struct {

@@ -713,7 +713,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v0.1.0",
+				Sw:    "v1.0.0",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},
