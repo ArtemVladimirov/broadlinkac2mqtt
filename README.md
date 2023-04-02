@@ -23,8 +23,7 @@ Example of config.yml
       log_level: error    # Supported: info, disabled, fatal, debug, error. Default: error
     
     mqtt:
-      port: 1883                                      # Default: 1883
-      host: 192.168.1.36                              # Required
+      broker: "mqtt://192.168.1.10:1883"              # Required. Use mqtts:// for ssl support
       user: admin                                     # Optional  
       password: password                              # Optional    
       client_id: airac                                # Default: broadlinkac
