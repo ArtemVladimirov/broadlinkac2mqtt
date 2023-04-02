@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app"
+	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt"
 	workspaceMqttModels "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/models"
 	workspaceMqttSender "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/publisher"
 	workspaceMqttReceiver "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/subscriber"
@@ -15,10 +16,8 @@ import (
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
-	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -58,8 +57,7 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 	}
 
 	mqttConfig := workspaceMqttModels.ConfigMqtt{
-		Host:                     cfg.Mqtt.Host,
-		Port:                     cfg.Mqtt.Port,
+		Broker:                   cfg.Mqtt.Broker,
 		User:                     cfg.Mqtt.User,
 		Password:                 cfg.Mqtt.Password,
 		ClientId:                 cfg.Mqtt.ClientId,
@@ -73,30 +71,7 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 
 	cache := workspaceCache.NewCache()
 
-	//Configure MQTT Client
-	uri, err := url.ParseRequestURI("tcp://" + cfg.Mqtt.Host + ":" + strconv.Itoa(int(cfg.Mqtt.Port)))
-	if err != nil {
-		message := "URL address is incorrect"
-		logger.Error().Msg(message)
-		return nil, errors.New(message)
-	}
-	opts := paho.NewClientOptions().AddBroker(uri.String()).SetClientID(cfg.Mqtt.ClientId)
-	if cfg.Mqtt.User != nil {
-		opts.SetUsername(*cfg.Mqtt.User)
-	}
-	if cfg.Mqtt.Password != nil {
-		opts.SetPassword(*cfg.Mqtt.Password)
-	}
-	opts.SetKeepAlive(30 * time.Second)
-	opts.SetPingTimeout(10 * time.Second)
-	opts.SetAutoReconnect(true)
-	opts.SetCleanSession(false)
-	opts.SetConnectionLostHandler(func(client paho.Client, err error) {
-		logger.Error().Err(err).Msg("MQTT connection lost")
-	})
-	opts.SetOnConnectHandler(func(client paho.Client) {
-		logger.Info().Err(err).Msg("Connected to MQTT")
-	})
+	opts, _ := mqtt.NewMqttConfig(logger, cfg.Mqtt)
 	client := paho.NewClient(opts)
 
 	//Configure MQTT Sender Layer
