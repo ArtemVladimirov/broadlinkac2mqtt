@@ -23,20 +23,18 @@ Example of config.yml
       log_level: error    # Supported: info, disabled, fatal, debug, error. Default: error
     
     mqtt:
-      port: 1883                            # Default: 1883
-      host: 192.168.1.36                    # Required
-      user: admin                           # Optional  
-      password: password                    # Optional    
-      client_id: airac                      # Default: broadlinkac
-      topic_prefix: aircon                  # Default: airac
-      auto_discovery_topic: homeassistant   # Optional
-      auto_discovery_topic_retain: false    # Default: true
-      certificate_authority: "./config/cert/ca.crt" # Optional. CA certificate in CRT format.
-      skip_cert_cn_check: false                     # Default: true. Don’t verify if the common name in the server certificate matches the value of broker.
-      
-      ## Authorization using client certificates
-      certificate_client: "./config/cert/client.crt"  # Optional
-      key-client: "./config/cert/client.key"          # Optional
+      port: 1883                                      # Default: 1883
+      host: 192.168.1.36                              # Required
+      user: admin                                     # Optional  
+      password: password                              # Optional    
+      client_id: airac                                # Default: broadlinkac
+      topic_prefix: aircon                            # Default: airac
+      auto_discovery_topic: homeassistant             # Optional
+      auto_discovery_topic_retain: false              # Default: true
+      certificate_authority: "./config/cert/ca.crt"   # Optional. CA certificate in CRT format.
+      skip_cert_cn_check: false                       # Default: true. Don’t verify if the common name in the server certificate matches the value of broker.
+      certificate_client: "./config/cert/client.crt"  # Optional. Authorization using client certificates
+      key-client: "./config/cert/client.key"          # Optional. Authorization using client certificates
     
     devices:
       - ip: 192.168.1.12
