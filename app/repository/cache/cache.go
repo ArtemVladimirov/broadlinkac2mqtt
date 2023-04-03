@@ -15,7 +15,7 @@ type cache struct {
 	// Storages for last received states from ac
 	deviceStatusRaw    map[string]models_service.DeviceStatusRaw
 	deviceAvailability map[string]string
-	ambientTemp        map[string]int8
+	ambientTemp        map[string]float32
 	// Storages for the last mqtt message
 	mqttModeMessages        map[string]models.MqttModeMessage
 	mqttFanModeMessages     map[string]models.MqttFanModeMessage
@@ -28,7 +28,7 @@ func NewCache() *cache {
 	deviceAuth := make(map[string]models_service.DeviceAuth)
 	deviceStatusMqtt := make(map[string]models_service.DeviceStatusMqtt)
 	deviceStatusRaw := make(map[string]models_service.DeviceStatusRaw)
-	ambientTemp := make(map[string]int8)
+	ambientTemp := make(map[string]float32)
 	mqttModeMessages := make(map[string]models.MqttModeMessage)
 	mqttFanModeMessages := make(map[string]models.MqttFanModeMessage)
 	mqttSwingModeMessages := make(map[string]models.MqttSwingModeMessage)

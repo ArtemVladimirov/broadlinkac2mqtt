@@ -32,7 +32,7 @@ type UpsertDeviceAuthInput struct {
 
 type UpsertAmbientTempInput struct {
 	Mac         string
-	Temperature int8
+	Temperature float32
 }
 
 type ReadAmbientTempInput struct {
@@ -40,7 +40,7 @@ type ReadAmbientTempInput struct {
 }
 
 type ReadAmbientTempReturn struct {
-	Temperature int8
+	Temperature float32
 }
 
 type ReadDeviceStatusInput struct {
