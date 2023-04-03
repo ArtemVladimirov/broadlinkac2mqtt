@@ -3,10 +3,10 @@ package publisher
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/models"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
-	"strconv"
 )
 
 const (
@@ -44,17 +44,17 @@ func (m *mqttPublisher) PublishDiscoveryTopic(ctx context.Context, logger *zerol
 
 func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models.PublishAmbientTempInput) error {
 
-	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/temp/value"
+	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/current_temp/value"
 
-	m.client.Publish(topic, 0, false, strconv.Itoa(int(input.Temperature)))
+	m.client.Publish(topic, 0, false, fmt.Sprintf("%.1f", input.Temperature))
 	return nil
 }
 
 func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *zerolog.Logger, input *models.PublishTemperatureInput) error {
 
-	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/current_temp/value"
+	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/temp/value"
 
-	m.client.Publish(topic, 0, false, strconv.Itoa(int(input.Temperature)))
+	m.client.Publish(topic, 0, false, fmt.Sprintf("%.1f", input.Temperature))
 	return nil
 }
 

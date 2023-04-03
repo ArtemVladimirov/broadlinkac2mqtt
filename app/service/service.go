@@ -229,7 +229,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 		return err
 	}
 
-	if (response.Payload[0x22] | (response.Payload[0x23] << 8)) != 0 {
+	if (int(response.Payload[0x22]) | (int(response.Payload[0x23]) << 8)) != 0 {
 		logger.Error().Err(err).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
 		return models.ErrorInvalidResultPacket
 	}
@@ -275,11 +275,11 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 
 	logger.Debug().Int8("ambientTemp", int8(ambientTemp)).Str("device", input.Mac).Msg("Ambient temperature")
 
-	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != int8(ambientTemp) {
+	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != float32(ambientTemp) {
 		// Sent  temperature to MQTT
 		publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
 			Mac:         input.Mac,
-			Temperature: int8(ambientTemp),
+			Temperature: float32(ambientTemp),
 		}
 
 		err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
@@ -289,7 +289,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 		}
 
 		// Save the new value in storage
-		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: int8(ambientTemp), Mac: input.Mac}
+		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: float32(ambientTemp), Mac: input.Mac}
 
 		err = s.cache.UpsertAmbientTemp(ctx, logger, upsertAmbientTempInput)
 		if err != nil {
@@ -328,7 +328,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 	//                 DECODE RESPONSE                        //
 	////////////////////////////////////////////////////////////
 
-	if (response.Payload[0x22] | (response.Payload[0x23] << 8)) != 0 {
+	if (int(response.Payload[0x22]) | (int(response.Payload[0x23]) << 8)) != 0 {
 		logger.Error().Err(err).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
 		return models.ErrorInvalidResultPacket
 	}
@@ -373,7 +373,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 
 	var raw = models.DeviceStatusRaw{
 		UpdatedAt:          time.Now(),
-		Temperature:        float32(8 + (response.Payload[10] >> 3) + byte(0.5*float32(response.Payload[12]>>7))),
+		Temperature:        float32(8+(response.Payload[10]>>3)) + 0.5*float32(response.Payload[12]>>7),
 		Power:              response.Payload[18] >> 5 & 0b00000001,
 		FixationVertical:   response.Payload[10] & 0b00000111,
 		Mode:               response.Payload[15] >> 5 & 0b00001111,
@@ -718,7 +718,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v1.0.0",
+				Sw:    "v1.1.0",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},

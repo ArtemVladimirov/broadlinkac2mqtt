@@ -54,7 +54,7 @@ type PublishDiscoveryTopicInput struct {
 
 type PublishAmbientTempInput struct {
 	Mac         string
-	Temperature int8
+	Temperature float32
 }
 
 type PublishTemperatureInput struct {
