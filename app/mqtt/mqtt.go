@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/config"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
 	"net/url"

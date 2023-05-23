@@ -1,4 +1,4 @@
-module github.com/ArtVladimirov/BroadlinkAC2Mqtt
+module github.com/ArtemVladimirov/broadlinkac2mqtt
 
 go 1.19
 

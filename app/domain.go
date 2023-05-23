@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
-	models_mqtt "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/models"
-	models_cache "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/repository/models"
-	models_service "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/service/models"
-	models_web "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/webClient/models"
+	models_mqtt "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
+	models_cache "github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
+	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
+	models_web "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
 )

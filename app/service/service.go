@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"encoding/hex"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app"
-	models_mqtt "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/models"
-	models_repo "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/repository/models"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/service/models"
-	models_web "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/webClient/models"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/pkg/coder"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
+	models_mqtt "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
+	models_repo "github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
+	models_web "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/pkg/coder"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"math/rand"
@@ -254,7 +254,11 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 
 	auth := readDeviceAuthReturn.Auth
 
-	response.Payload, _ = coder.Decrypt(auth.Key, auth.Iv, response.Payload)
+	response.Payload, err = coder.Decrypt(auth.Key, auth.Iv, response.Payload)
+	if err != nil {
+		logger.Error().Interface("input", input).Msg("failed to decrypt payload")
+		return err
+	}
 
 	//Drop leading stuff as don't need
 	response.Payload = response.Payload[2:]
@@ -271,6 +275,14 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 	if err != nil {
 		logger.Error().Interface("input", readAmbientTempInput).Str("device", input.Mac).Msg("failed to read the ambient temperature")
 		return err
+	}
+
+	if readAmbientTempReturn != nil {
+		// Sometimes there is strange temperature
+		if readAmbientTempReturn.Temperature-float32(ambientTemp) > 4 {
+			logger.Error().Interface("input", readAmbientTempInput).Str("device", input.Mac).Msg("failed to read the ambient temperature")
+			return models.ErrorInvalidParameterTemperature
+		}
 	}
 
 	logger.Debug().Int8("ambientTemp", int8(ambientTemp)).Str("device", input.Mac).Msg("Ambient temperature")

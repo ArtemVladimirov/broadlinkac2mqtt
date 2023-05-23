@@ -2,8 +2,8 @@ package cache
 
 import (
 	"context"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/repository/models"
-	models_service "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/service/models"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
+	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	"github.com/rs/zerolog"
 )
 

@@ -1,7 +1,7 @@
 package subscriber
 
 import (
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
 )
