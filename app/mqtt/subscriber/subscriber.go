@@ -2,9 +2,9 @@ package subscriber
 
 import (
 	"context"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/mqtt/models"
-	models_service "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/service/models"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
+	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/rs/zerolog"
 	"strconv"

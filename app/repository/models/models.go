@@ -1,7 +1,7 @@
 package models
 
 import (
-	models_service "github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/service/models"
+	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	"time"
 )
 

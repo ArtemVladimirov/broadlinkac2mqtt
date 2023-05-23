@@ -2,7 +2,7 @@ package webClient
 
 import (
 	"context"
-	"github.com/ArtVladimirov/BroadlinkAC2Mqtt/app/webClient/models"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	"github.com/rs/zerolog"
 	"net"
 	"strconv"
