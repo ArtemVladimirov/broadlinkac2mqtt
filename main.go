@@ -27,6 +27,7 @@ type App struct {
 	devices             []workspaceServiceModels.DeviceConfig
 	autoDiscoveryTopic  *string
 	topicPrefix         string
+	logLevel            string
 	wsBroadLinkReceiver app.WebClient
 	wsMqttReceiver      app.MqttSubscriber
 	wsService           app.Service
@@ -39,22 +40,6 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 	cfg, err := config.NewConfig(logger)
 	if err != nil {
 		return nil, err
-	}
-
-	// Set logger lever
-	switch cfg.Service.LogLevel {
-	case "error":
-		logger.Level(zerolog.ErrorLevel)
-	case "debug":
-		logger.Level(zerolog.DebugLevel)
-	case "fatal":
-		logger.Level(zerolog.FatalLevel)
-	case "disabled":
-		logger.Level(zerolog.Disabled)
-	case "info":
-		logger.Level(zerolog.InfoLevel)
-	default:
-		logger.Level(zerolog.ErrorLevel)
 	}
 
 	mqttConfig := workspaceMqttModels.ConfigMqtt{
@@ -118,6 +103,7 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 		wsService:          service,
 		topicPrefix:        cfg.Mqtt.TopicPrefix,
 		autoDiscoveryTopic: cfg.Mqtt.AutoDiscoveryTopic,
+		logLevel:           cfg.Service.LogLevel,
 	}
 
 	return application, nil
@@ -240,6 +226,22 @@ func main() {
 	application, err := NewApp(&logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to get a new App")
+	}
+
+	// Set new logger lever
+	switch application.logLevel {
+	case "error":
+		logger.Level(zerolog.ErrorLevel)
+	case "debug":
+		logger.Level(zerolog.DebugLevel)
+	case "fatal":
+		logger.Level(zerolog.FatalLevel)
+	case "disabled":
+		logger.Level(zerolog.Disabled)
+	case "info":
+		logger.Level(zerolog.InfoLevel)
+	default:
+		logger.Level(zerolog.ErrorLevel)
 	}
 
 	// Run
