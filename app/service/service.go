@@ -266,8 +266,8 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 	if len(response.Payload) < 40 {
 		return models.ErrorInvalidResultPacketLength
 	}
-	// ambient_temp = (response_payload[15] - 0b00100000) + (float(response_payload[31]) / 10)
-	ambientTemp := float32(response.Payload[15]&0b00011111) + (float32(response.Payload[31]) / 10)
+
+	ambientTemp := float32(response.Payload[15]-0b00100000) + (float32(response.Payload[31]) / 10)
 
 	readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: input.Mac}
 
