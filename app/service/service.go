@@ -266,8 +266,8 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 	if len(response.Payload) < 40 {
 		return models.ErrorInvalidResultPacketLength
 	}
-
-	ambientTemp := response.Payload[15] & 0b00011111
+	// ambient_temp = (response_payload[15] - 0b00100000) + (float(response_payload[31]) / 10)
+	ambientTemp := float32(response.Payload[15]&0b00011111) + (float32(response.Payload[31]) / 10)
 
 	readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: input.Mac}
 
@@ -279,19 +279,19 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 
 	if readAmbientTempReturn != nil {
 		// Sometimes there is strange temperature
-		if readAmbientTempReturn.Temperature-float32(ambientTemp) > 4 {
+		if readAmbientTempReturn.Temperature-ambientTemp > 4 || ambientTemp-readAmbientTempReturn.Temperature > 4 {
 			logger.Error().Interface("input", readAmbientTempInput).Str("device", input.Mac).Msg("failed to read the ambient temperature")
 			return models.ErrorInvalidParameterTemperature
 		}
 	}
 
-	logger.Debug().Int8("ambientTemp", int8(ambientTemp)).Str("device", input.Mac).Msg("Ambient temperature")
+	logger.Debug().Float32("ambientTemp", ambientTemp).Str("device", input.Mac).Msg("Ambient temperature")
 
-	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != float32(ambientTemp) {
+	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != ambientTemp {
 		// Sent  temperature to MQTT
 		publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
 			Mac:         input.Mac,
-			Temperature: float32(ambientTemp),
+			Temperature: ambientTemp,
 		}
 
 		err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
@@ -730,7 +730,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v1.1.0",
+				Sw:    "v1.3.0",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},
