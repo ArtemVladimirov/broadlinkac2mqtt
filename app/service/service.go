@@ -726,11 +726,11 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			TempStep:                0.5,
 			TemperatureStateTopic:   prefix + "/temp/value",
 			TemperatureCommandTopic: prefix + "/temp/set",
-			Precision:               0.5,
+			Precision:               0.1,
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v1.3.0",
+				Sw:    "v1.3.1",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},
