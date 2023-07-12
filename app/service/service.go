@@ -266,8 +266,8 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 	if len(response.Payload) < 40 {
 		return models.ErrorInvalidResultPacketLength
 	}
-	// ambient_temp = (response_payload[15] - 0b00100000) + (float(response_payload[31]) / 10)
-	ambientTemp := float32(response.Payload[15]&0b00011111) + (float32(response.Payload[31]) / 10)
+
+	ambientTemp := float32(response.Payload[15]-0b00100000) + (float32(response.Payload[31]) / 10)
 
 	readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: input.Mac}
 
@@ -726,11 +726,11 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			TempStep:                0.5,
 			TemperatureStateTopic:   prefix + "/temp/value",
 			TemperatureCommandTopic: prefix + "/temp/set",
-			Precision:               0.5,
+			Precision:               0.1,
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v1.3.0",
+				Sw:    "v1.3.1",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},
