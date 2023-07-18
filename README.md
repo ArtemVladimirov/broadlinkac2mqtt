@@ -49,6 +49,13 @@ Example of config.yml
 
 ## Installation
 
+### Home Assistant Add-on
+
+Install Add-On:
+
+* Settings > Add-ons > Plus > Repositories > Add `https://github.com/ArtemVladimirov/hassio-add-ons`
+* broadlinkac2mqtt > Install > Start
+
 ### Docker Compose
 
 ```
