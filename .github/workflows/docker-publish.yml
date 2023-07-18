@@ -1,8 +1,7 @@
 on:
-  push:
-    tags:
-      - "v*"
-      
+  release:
+    types: [released]
+
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
