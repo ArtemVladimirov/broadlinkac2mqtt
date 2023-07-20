@@ -707,7 +707,7 @@ func (s *service) SendCommand(ctx context.Context, logger *zerolog.Logger, input
 
 	sendCommandReturn, err := s.webClient.SendCommand(ctx, logger, sendCommandInput)
 	if err != nil {
-		logger.Error().Interface("input", input).Str("device", input.Mac).Msg("failed to send a command")
+		logger.Error().Err(err).Interface("input", input).Str("device", input.Mac).Msg("failed to send a command")
 		return nil, err
 	}
 
