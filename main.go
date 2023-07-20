@@ -231,17 +231,17 @@ func main() {
 	// Set new logger lever
 	switch application.logLevel {
 	case "error":
-		logger.Level(zerolog.ErrorLevel)
+		logger = logger.Level(zerolog.ErrorLevel)
 	case "debug":
-		logger.Level(zerolog.DebugLevel)
+		logger = logger.Level(zerolog.DebugLevel)
 	case "fatal":
-		logger.Level(zerolog.FatalLevel)
+		logger = logger.Level(zerolog.FatalLevel)
 	case "disabled":
-		logger.Level(zerolog.Disabled)
+		logger = logger.Level(zerolog.Disabled)
 	case "info":
-		logger.Level(zerolog.InfoLevel)
+		logger = logger.Level(zerolog.InfoLevel)
 	default:
-		logger.Level(zerolog.ErrorLevel)
+		logger = logger.Level(zerolog.ErrorLevel)
 	}
 
 	// Run

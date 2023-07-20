@@ -5,142 +5,281 @@ import (
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	"github.com/rs/zerolog"
+	"sync"
 )
 
 type cache struct {
-	deviceConfig map[string]models_service.DeviceConfig
-	deviceAuth   map[string]models_service.DeviceAuth
-	// Storage for converted states
-	deviceStatusMqtt map[string]models_service.DeviceStatusMqtt
-	// Storages for last received states from ac
-	deviceStatusRaw    map[string]models_service.DeviceStatusRaw
-	deviceAvailability map[string]string
-	ambientTemp        map[string]float32
-	// Storages for the last mqtt message
-	mqttModeMessages        map[string]models.MqttModeMessage
-	mqttFanModeMessages     map[string]models.MqttFanModeMessage
-	mqttSwingModeMessages   map[string]models.MqttSwingModeMessage
-	mqttTemperatureMessages map[string]models.MqttTemperatureMessage
+	devices map[string]models.Device
+	mutex   *sync.Mutex
 }
 
 func NewCache() *cache {
-	deviceConfig := make(map[string]models_service.DeviceConfig)
-	deviceAuth := make(map[string]models_service.DeviceAuth)
-	deviceStatusMqtt := make(map[string]models_service.DeviceStatusMqtt)
-	deviceStatusRaw := make(map[string]models_service.DeviceStatusRaw)
-	ambientTemp := make(map[string]float32)
-	mqttModeMessages := make(map[string]models.MqttModeMessage)
-	mqttFanModeMessages := make(map[string]models.MqttFanModeMessage)
-	mqttSwingModeMessages := make(map[string]models.MqttSwingModeMessage)
-	mqttTemperatureMessages := make(map[string]models.MqttTemperatureMessage)
-	deviceAvailability := make(map[string]string)
-
 	return &cache{
-		deviceAuth:              deviceAuth,
-		deviceConfig:            deviceConfig,
-		deviceStatusMqtt:        deviceStatusMqtt,
-		deviceStatusRaw:         deviceStatusRaw,
-		ambientTemp:             ambientTemp,
-		mqttModeMessages:        mqttModeMessages,
-		mqttFanModeMessages:     mqttFanModeMessages,
-		mqttSwingModeMessages:   mqttSwingModeMessages,
-		mqttTemperatureMessages: mqttTemperatureMessages,
-		deviceAvailability:      deviceAvailability,
+		devices: make(map[string]models.Device),
+		mutex:   new(sync.Mutex),
 	}
 }
 
 func (c *cache) UpsertDeviceConfig(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceConfigInput) error {
-	c.deviceConfig[input.Config.Mac] = input.Config
+	var device models.Device
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device = c.devices[input.Config.Mac]
+	device.Config = input.Config
+	c.devices[input.Config.Mac] = device
 	return nil
 }
 
 func (c *cache) ReadDeviceConfig(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceConfigInput) (*models.ReadDeviceConfigReturn, error) {
-	config, ok := c.deviceConfig[input.Mac]
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device config not found in cache"
+		message := "device is not found in cache"
 		logger.Error().Interface("input", input).Msg(message)
 		return nil, models.ErrorDeviceNotFound
 	}
-	return &models.ReadDeviceConfigReturn{Config: config}, nil
+
+	return &models.ReadDeviceConfigReturn{Config: device.Config}, nil
 }
 
 func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceAuthInput) error {
-	c.deviceAuth[input.Mac] = input.Auth
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.Auth = &input.Auth
+	c.devices[input.Mac] = device
 	return nil
 }
 
 func (c *cache) ReadDeviceAuth(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceAuthInput) (*models.ReadDeviceAuthReturn, error) {
-	auth, ok := c.deviceAuth[input.Mac]
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device auth not found in cache"
+		message := "device is not found in cache"
 		logger.Error().Interface("input", input).Msg(message)
 		return nil, models.ErrorDeviceNotFound
 	}
-	return &models.ReadDeviceAuthReturn{Auth: auth}, nil
+
+	if device.Auth == nil {
+		message := "device not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceAuthNotFound
+	}
+
+	return &models.ReadDeviceAuthReturn{Auth: *device.Auth}, nil
 }
 
 func (c *cache) UpsertAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models.UpsertAmbientTempInput) error {
-	c.ambientTemp[input.Mac] = input.Temperature
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.DeviceStatus.AmbientTemp = &input.Temperature
+	c.devices[input.Mac] = device
+
 	return nil
 }
 
 func (c *cache) ReadAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models.ReadAmbientTempInput) (*models.ReadAmbientTempReturn, error) {
-	temperature, ok := c.ambientTemp[input.Mac]
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "ambient temperature not found in cache"
-		logger.Debug().Interface("input", input).Msg(message)
-		return nil, nil
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceNotFound
 	}
-	return &models.ReadAmbientTempReturn{Temperature: temperature}, nil
+
+	if device.DeviceStatus.AmbientTemp == nil {
+		message := "device status ambient temp is not found in cache"
+		logger.Debug().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceStatusAmbientTempNotFound
+	}
+
+	return &models.ReadAmbientTempReturn{Temperature: *device.DeviceStatus.AmbientTemp}, nil
 }
 
 func (c *cache) UpsertDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceStatusInput) error {
-	c.deviceStatusMqtt[input.Mac] = input.Status
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.DeviceStatus.Temperature = &input.Status.Temperature
+	device.DeviceStatus.SwingMode = &input.Status.SwingMode
+	device.DeviceStatus.Mode = &input.Status.Mode
+	device.DeviceStatus.FanMode = &input.Status.FanMode
+
+	c.devices[input.Mac] = device
+
 	return nil
 }
 
 func (c *cache) ReadDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceStatusInput) (*models.ReadDeviceStatusReturn, error) {
-	status, ok := c.deviceStatusMqtt[input.Mac]
+	var status models_service.DeviceStatusMqtt
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device not found in cache"
-		logger.Debug().Interface("input", input).Msg(message)
-		return nil, nil
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceNotFound
 	}
+
+	if device.DeviceStatus.FanMode == nil ||
+		device.DeviceStatus.Mode == nil ||
+		device.DeviceStatus.SwingMode == nil ||
+		device.DeviceStatus.Temperature == nil {
+		message := "device status is not found in cache"
+		logger.Debug().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceStatusNotFound
+	}
+
+	status.FanMode = *device.DeviceStatus.FanMode
+	status.SwingMode = *device.DeviceStatus.SwingMode
+	status.Temperature = *device.DeviceStatus.Temperature
+	status.Mode = *device.DeviceStatus.Mode
+
 	return &models.ReadDeviceStatusReturn{Status: status}, nil
 }
 
 func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceStatusRawInput) error {
-	c.deviceStatusRaw[input.Mac] = input.Status
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.DeviceStatusRaw = &input.Status
+	c.devices[input.Mac] = device
+
 	return nil
 }
 
 func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceStatusRawInput) (*models.ReadDeviceStatusRawReturn, error) {
-	status, ok := c.deviceStatusRaw[input.Mac]
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device not found in cache"
-		logger.Debug().Interface("input", input).Msg(message)
-		return nil, nil
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceNotFound
 	}
-	return &models.ReadDeviceStatusRawReturn{Status: status}, nil
+
+	if device.DeviceStatusRaw == nil {
+		message := "device status raw is not found in cache"
+		logger.Debug().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceStatusRawNotFound
+	}
+
+	return &models.ReadDeviceStatusRawReturn{Status: *device.DeviceStatusRaw}, nil
 }
 
 func (c *cache) UpsertMqttModeMessage(ctx context.Context, logger *zerolog.Logger, input *models.UpsertMqttModeMessageInput) error {
-	c.mqttModeMessages[input.Mac] = input.Mode
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.MqttLastMessage.Mode = &input.Mode
+	c.devices[input.Mac] = device
+
 	return nil
 }
 
 func (c *cache) UpsertMqttSwingModeMessage(ctx context.Context, logger *zerolog.Logger, input *models.UpsertMqttSwingModeMessageInput) error {
-	c.mqttSwingModeMessages[input.Mac] = input.SwingMode
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.MqttLastMessage.SwingMode = &input.SwingMode
+	c.devices[input.Mac] = device
 	return nil
 }
 
 func (c *cache) UpsertMqttFanModeMessage(ctx context.Context, logger *zerolog.Logger, input *models.UpsertMqttFanModeMessageInput) error {
-	c.mqttFanModeMessages[input.Mac] = input.FanMode
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.MqttLastMessage.FanMode = &input.FanMode
+	c.devices[input.Mac] = device
 	return nil
 }
 
 func (c *cache) UpsertMqttTemperatureMessage(ctx context.Context, logger *zerolog.Logger, input *models.UpsertMqttTemperatureMessageInput) error {
-	c.mqttTemperatureMessages[input.Mac] = input.Temperature
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.MqttLastMessage.Temperature = &input.Temperature
+	c.devices[input.Mac] = device
 	return nil
 }
 
@@ -148,50 +287,70 @@ func (c *cache) ReadMqttMessage(ctx context.Context, logger *zerolog.Logger, inp
 
 	var state models.ReadMqttMessageReturn
 
-	mode, ok := c.mqttModeMessages[input.Mac]
-	if ok {
-		state.Mode = &mode
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceNotFound
 	}
 
-	swingMode, ok := c.mqttSwingModeMessages[input.Mac]
-	if ok {
-		state.SwingMode = &swingMode
-	}
-
-	fanMode, ok := c.mqttFanModeMessages[input.Mac]
-	if ok {
-		state.FanMode = &fanMode
-	}
-
-	temperature, ok := c.mqttTemperatureMessages[input.Mac]
-
-	if ok {
-		state.Temperature = &temperature
-	}
+	state.Temperature = device.MqttLastMessage.Temperature
+	state.Mode = device.MqttLastMessage.Mode
+	state.SwingMode = device.MqttLastMessage.SwingMode
+	state.FanMode = device.MqttLastMessage.FanMode
 
 	return &state, nil
 }
 
 func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceAvailabilityInput) error {
-	c.deviceAvailability[input.Mac] = input.Availability
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.DeviceStatus.Availability = &input.Availability
+	c.devices[input.Mac] = device
+
 	return nil
 }
 
 func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceAvailabilityInput) (*models.ReadDeviceAvailabilityReturn, error) {
 
-	availability, ok := c.deviceAvailability[input.Mac]
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device availability is not found in cache"
+		message := "device is not found in cache"
 		logger.Error().Interface("input", input).Msg(message)
 		return nil, models.ErrorDeviceNotFound
 	}
-	return &models.ReadDeviceAvailabilityReturn{Availability: availability}, nil
+
+	if device.DeviceStatus.Availability == nil {
+		message := "device status ambient temp is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return nil, models.ErrorDeviceStatusAvailabilityNotFound
+	}
+
+	return &models.ReadDeviceAvailabilityReturn{Availability: *device.DeviceStatus.Availability}, nil
 }
 
 func (c *cache) ReadAuthedDevices(ctx context.Context, logger *zerolog.Logger) (*models.ReadAuthedDevicesReturn, error) {
 	var macs []string
 
-	for mac := range c.deviceAuth {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for mac := range c.devices {
 		macs = append(macs, mac)
 	}
 
