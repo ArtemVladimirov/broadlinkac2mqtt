@@ -229,8 +229,8 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 		return err
 	}
 
-	if (int(response.Payload[0x22]) | (int(response.Payload[0x23]) << 8)) != 0 {
-		logger.Error().Err(err).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
+	if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
+		logger.Error().Err(models.ErrorInvalidResultPacket).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
 		return models.ErrorInvalidResultPacket
 	}
 
@@ -340,8 +340,8 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 	//                 DECODE RESPONSE                        //
 	////////////////////////////////////////////////////////////
 
-	if (int(response.Payload[0x22]) | (int(response.Payload[0x23]) << 8)) != 0 {
-		logger.Error().Err(err).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
+	if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
+		logger.Error().Err(models.ErrorInvalidResultPacket).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
 		return models.ErrorInvalidResultPacket
 	}
 
@@ -402,7 +402,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 	}
 
 	if raw.Temperature < 16.0 {
-		logger.Error().Err(err).Str("device", input.Mac).Float32("temperature", raw.Temperature).Msg("Wrong temperature, skip package")
+		logger.Error().Err(models.ErrorInvalidResultPacketLength).Str("device", input.Mac).Float32("temperature", raw.Temperature).Msg("Wrong temperature, skip package")
 		return models.ErrorInvalidResultPacketLength
 	}
 
@@ -1038,11 +1038,16 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 	// Update ambient temperature once in 3 minutes
 	go func() {
 		for {
-			err := s.GetDeviceAmbientTemperature(ctx, logger, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
-			if err != nil {
-				logger.Error().Str("device", input.Mac).Msg("failed to get ambient temperature")
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				err := s.GetDeviceAmbientTemperature(ctx, logger, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
+				if err != nil {
+					logger.Error().Str("device", input.Mac).Msg("failed to get ambient temperature")
+				}
+				time.Sleep(time.Minute * 3)
 			}
-			time.Sleep(time.Minute * 3)
 		}
 	}()
 
