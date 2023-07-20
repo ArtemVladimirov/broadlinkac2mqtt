@@ -687,7 +687,7 @@ func (s *service) SendCommand(ctx context.Context, logger *zerolog.Logger, input
 
 	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
 	if err != nil {
-		logger.Error().Interface("input", input).Msg("failed to read device config")
+		logger.Error().Err(err).Interface("input", input).Msg("failed to read device config")
 		return nil, err
 	}
 
@@ -730,7 +730,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			Device: models_mqtt.DiscoveryTopicDevice{
 				Model: "AirCon",
 				Mf:    "ArtVladimirov",
-				Sw:    "v1.3.1",
+				Sw:    "v1.4.0",
 				Ids:   input.Device.Mac,
 				Name:  input.Device.Name,
 			},
@@ -1035,165 +1035,163 @@ func (s *service) UpdateDeviceAvailability(ctx context.Context, logger *zerolog.
 
 func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Logger, input *models.StartDeviceMonitoringInput) error {
 
-	// Update ambient temperature once in 3 minutes
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
+	var (
+		modeUpdatedTime, swingModeUpdatedTime, fanModeUpdatedTime, temperatureUpdatedTime time.Time
+		lastUpdateState, lastUpdateTemp                                                   time.Time
+
+		isDeviceAvailable bool
+	)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if time.Now().Sub(lastUpdateTemp).Seconds() > 180 {
 				err := s.GetDeviceAmbientTemperature(ctx, logger, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
 				if err != nil {
 					logger.Error().Str("device", input.Mac).Msg("failed to get ambient temperature")
 				}
-				time.Sleep(time.Minute * 3)
-			}
-		}
-	}()
-
-	var (
-		modeUpdatedTime, swingModeUpdatedTime, fanModeUpdatedTime, temperatureUpdatedTime time.Time
-		lastUpdate                                                                        time.Time
-		isDeviceAvailable                                                                 bool
-	)
-
-	for {
-		var (
-			updateDeviceState        = false
-			mode, swingMode, fanMode *string
-			temperature              *float32
-		)
-
-		readMqttMessageInput := &models_repo.ReadMqttMessageInput{
-			Mac: input.Mac,
-		}
-		message, err := s.cache.ReadMqttMessage(ctx, logger, readMqttMessageInput)
-		if err != nil {
-			return err
-		}
-
-		if message.Mode != nil {
-			if message.Mode.UpdatedAt != modeUpdatedTime {
-				updateDeviceState = true
-				mode = &message.Mode.Mode
-				modeUpdatedTime = message.Mode.UpdatedAt
-
-				publishModeInput := &models_mqtt.PublishModeInput{
-					Mac:  input.Mac,
-					Mode: *mode,
-				}
-				err := s.mqtt.PublishMode(ctx, logger, publishModeInput)
-				if err != nil {
-					logger.Error().Interface("input", publishModeInput).Str("device", input.Mac).Msg("failed to publish mode to mqtt")
-				}
-			}
-		}
-
-		if message.FanMode != nil {
-			if message.FanMode.UpdatedAt != fanModeUpdatedTime {
-				updateDeviceState = true
-				fanMode = &message.FanMode.FanMode
-				fanModeUpdatedTime = message.FanMode.UpdatedAt
-
-				publishFanModeInput := &models_mqtt.PublishFanModeInput{
-					Mac:     input.Mac,
-					FanMode: *fanMode,
-				}
-				err := s.mqtt.PublishFanMode(ctx, logger, publishFanModeInput)
-				if err != nil {
-					logger.Error().Interface("input", publishFanModeInput).Str("device", input.Mac).Msg("failed to publish fan mode to mqtt")
-				}
-			}
-		}
-
-		if message.SwingMode != nil {
-			if message.SwingMode.UpdatedAt != swingModeUpdatedTime {
-				updateDeviceState = true
-				swingMode = &message.SwingMode.SwingMode
-				swingModeUpdatedTime = message.FanMode.UpdatedAt
-
-				publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
-					Mac:       input.Mac,
-					SwingMode: *swingMode,
-				}
-				err := s.mqtt.PublishSwingMode(ctx, logger, publishSwingModeInput)
-				if err != nil {
-					logger.Error().Interface("input", publishSwingModeInput).Str("device", input.Mac).Msg("failed to publish swing mode to mqtt")
-				}
-			}
-		}
-
-		if message.Temperature != nil {
-			if message.Temperature.UpdatedAt != temperatureUpdatedTime {
-				updateDeviceState = true
-				temperature = &message.Temperature.Temperature
-				temperatureUpdatedTime = message.Temperature.UpdatedAt
-
-				publishTemperatureModeInput := &models_mqtt.PublishTemperatureInput{
-					Mac:         input.Mac,
-					Temperature: *temperature,
-				}
-				err := s.mqtt.PublishTemperature(ctx, logger, publishTemperatureModeInput)
-				if err != nil {
-					logger.Error().Interface("input", publishTemperatureModeInput).Str("device", input.Mac).Msg("failed to publish temperature to mqtt")
-				}
-			}
-		}
-
-		if (updateDeviceState && time.Now().Sub(lastUpdate).Seconds() > 2) || int(time.Now().Sub(lastUpdate).Seconds()) > s.updateInterval {
-			for {
-				err = s.GetDeviceStates(ctx, logger, &models.GetDeviceStatesInput{Mac: input.Mac})
-				if err != nil {
-					logger.Error().Err(err).Interface("device", input.Mac).Msg("Failed to get AC States")
-					if int(time.Now().Sub(lastUpdate).Seconds()) > s.updateInterval*3 && isDeviceAvailable {
-						isDeviceAvailable = false
-						updateDeviceAvailabilityInput := &models.UpdateDeviceAvailabilityInput{
-							Mac:          input.Mac,
-							Availability: "offline",
-						}
-						err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
-						if err != nil {
-							logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
-						}
-					}
-				} else {
-					lastUpdate = time.Now()
-					if !isDeviceAvailable {
-						isDeviceAvailable = true
-						updateDeviceAvailabilityInput := &models.UpdateDeviceAvailabilityInput{
-							Mac:          input.Mac,
-							Availability: "online",
-						}
-						err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
-						if err != nil {
-							logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
-						}
-					}
-					time.Sleep(time.Millisecond * 500)
-					break
-				}
-			}
-		}
-
-		if updateDeviceState && isDeviceAvailable {
-			updateDeviceStatesInput := &models.UpdateDeviceStatesInput{
-				Mac:         input.Mac,
-				FanMode:     fanMode,
-				SwingMode:   swingMode,
-				Mode:        mode,
-				Temperature: temperature,
-			}
-
-			err := s.UpdateDeviceStates(ctx, logger, updateDeviceStatesInput)
-			if err != nil {
-				logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceStatesInput).Msg("Failed to update device states")
 			} else {
-				lastUpdate = time.UnixMicro(0)
+				var (
+					updateDeviceState        = false
+					mode, swingMode, fanMode *string
+					temperature              *float32
+				)
+
+				readMqttMessageInput := &models_repo.ReadMqttMessageInput{
+					Mac: input.Mac,
+				}
+				message, err := s.cache.ReadMqttMessage(ctx, logger, readMqttMessageInput)
+				if err != nil {
+					return err
+				}
+
+				if message.Mode != nil {
+					if message.Mode.UpdatedAt != modeUpdatedTime {
+						updateDeviceState = true
+						mode = &message.Mode.Mode
+						modeUpdatedTime = message.Mode.UpdatedAt
+
+						publishModeInput := &models_mqtt.PublishModeInput{
+							Mac:  input.Mac,
+							Mode: *mode,
+						}
+						err := s.mqtt.PublishMode(ctx, logger, publishModeInput)
+						if err != nil {
+							logger.Error().Interface("input", publishModeInput).Str("device", input.Mac).Msg("failed to publish mode to mqtt")
+						}
+					}
+				}
+
+				if message.FanMode != nil {
+					if message.FanMode.UpdatedAt != fanModeUpdatedTime {
+						updateDeviceState = true
+						fanMode = &message.FanMode.FanMode
+						fanModeUpdatedTime = message.FanMode.UpdatedAt
+
+						publishFanModeInput := &models_mqtt.PublishFanModeInput{
+							Mac:     input.Mac,
+							FanMode: *fanMode,
+						}
+						err := s.mqtt.PublishFanMode(ctx, logger, publishFanModeInput)
+						if err != nil {
+							logger.Error().Interface("input", publishFanModeInput).Str("device", input.Mac).Msg("failed to publish fan mode to mqtt")
+						}
+					}
+				}
+
+				if message.SwingMode != nil {
+					if message.SwingMode.UpdatedAt != swingModeUpdatedTime {
+						updateDeviceState = true
+						swingMode = &message.SwingMode.SwingMode
+						swingModeUpdatedTime = message.FanMode.UpdatedAt
+
+						publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
+							Mac:       input.Mac,
+							SwingMode: *swingMode,
+						}
+						err := s.mqtt.PublishSwingMode(ctx, logger, publishSwingModeInput)
+						if err != nil {
+							logger.Error().Interface("input", publishSwingModeInput).Str("device", input.Mac).Msg("failed to publish swing mode to mqtt")
+						}
+					}
+				}
+
+				if message.Temperature != nil {
+					if message.Temperature.UpdatedAt != temperatureUpdatedTime {
+						updateDeviceState = true
+						temperature = &message.Temperature.Temperature
+						temperatureUpdatedTime = message.Temperature.UpdatedAt
+
+						publishTemperatureModeInput := &models_mqtt.PublishTemperatureInput{
+							Mac:         input.Mac,
+							Temperature: *temperature,
+						}
+						err := s.mqtt.PublishTemperature(ctx, logger, publishTemperatureModeInput)
+						if err != nil {
+							logger.Error().Interface("input", publishTemperatureModeInput).Str("device", input.Mac).Msg("failed to publish temperature to mqtt")
+						}
+					}
+				}
+
+				if (updateDeviceState && time.Now().Sub(lastUpdateState).Seconds() > 2) || int(time.Now().Sub(lastUpdateState).Seconds()) > s.updateInterval {
+					for {
+						err = s.GetDeviceStates(ctx, logger, &models.GetDeviceStatesInput{Mac: input.Mac})
+						if err != nil {
+							logger.Error().Err(err).Interface("device", input.Mac).Msg("Failed to get AC States")
+							if int(time.Now().Sub(lastUpdateState).Seconds()) > s.updateInterval*3 && isDeviceAvailable {
+								isDeviceAvailable = false
+								updateDeviceAvailabilityInput := &models.UpdateDeviceAvailabilityInput{
+									Mac:          input.Mac,
+									Availability: "offline",
+								}
+								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
+								if err != nil {
+									logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
+								}
+							}
+						} else {
+							lastUpdateState = time.Now()
+							if !isDeviceAvailable {
+								isDeviceAvailable = true
+								updateDeviceAvailabilityInput := &models.UpdateDeviceAvailabilityInput{
+									Mac:          input.Mac,
+									Availability: "online",
+								}
+								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
+								if err != nil {
+									logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
+								}
+							}
+							time.Sleep(time.Millisecond * 500)
+							break
+						}
+					}
+				}
+
+				if updateDeviceState && isDeviceAvailable {
+					updateDeviceStatesInput := &models.UpdateDeviceStatesInput{
+						Mac:         input.Mac,
+						FanMode:     fanMode,
+						SwingMode:   swingMode,
+						Mode:        mode,
+						Temperature: temperature,
+					}
+
+					err := s.UpdateDeviceStates(ctx, logger, updateDeviceStatesInput)
+					if err != nil {
+						logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceStatesInput).Msg("Failed to update device states")
+					} else {
+						lastUpdateState = time.UnixMicro(0)
+					}
+				}
+
+				time.Sleep(time.Millisecond * 500)
 			}
 		}
-
-		time.Sleep(time.Millisecond * 500)
 	}
+
 }
 
 func (s *service) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models.GetStatesOnHomeAssistantRestartInput) error {
@@ -1246,7 +1244,7 @@ func (s *service) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *z
 
 		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
 		if err != nil {
-			logger.Error().Interface("input", input).Msg("failed to read device config")
+			logger.Error().Err(err).Interface("input", input).Msg("failed to read device config")
 			return err
 		}
 

@@ -5,6 +5,30 @@ import (
 	"time"
 )
 
+type Device struct {
+	Config          models_service.DeviceConfig
+	Auth            *models_service.DeviceAuth
+	DeviceStatus    DeviceStatus
+	DeviceStatusRaw *models_service.DeviceStatusRaw
+	MqttLastMessage MqttStatus
+}
+
+type DeviceStatus struct {
+	Availability *string
+	AmbientTemp  *float32
+	FanMode      *string
+	SwingMode    *string
+	Mode         *string
+	Temperature  *float32
+}
+
+type MqttStatus struct {
+	FanMode     *MqttFanModeMessage
+	SwingMode   *MqttSwingModeMessage
+	Mode        *MqttModeMessage
+	Temperature *MqttTemperatureMessage
+}
+
 type ReadDeviceConfigInput struct {
 	Mac string
 }
