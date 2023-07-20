@@ -164,7 +164,7 @@ func (c *cache) ReadDeviceStatus(ctx context.Context, logger *zerolog.Logger, in
 		device.DeviceStatus.SwingMode == nil ||
 		device.DeviceStatus.Temperature == nil {
 		message := "device status is not found in cache"
-		logger.Error().Interface("input", input).Msg(message)
+		logger.Debug().Interface("input", input).Msg(message)
 		return nil, models.ErrorDeviceStatusNotFound
 	}
 
