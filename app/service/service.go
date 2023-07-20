@@ -273,8 +273,12 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 
 	readAmbientTempReturn, err := s.cache.ReadAmbientTemp(ctx, logger, readAmbientTempInput)
 	if err != nil {
-		logger.Error().Interface("input", readAmbientTempInput).Str("device", input.Mac).Msg("failed to read the ambient temperature")
-		return err
+		switch err {
+		case models_repo.ErrorDeviceStatusAmbientTempNotFound:
+		default:
+			logger.Error().Interface("input", readAmbientTempInput).Str("device", input.Mac).Msg("failed to read the ambient temperature")
+			return err
+		}
 	}
 
 	if readAmbientTempReturn != nil {
