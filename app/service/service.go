@@ -1057,6 +1057,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 				if err != nil {
 					logger.Error().Str("device", input.Mac).Msg("failed to get ambient temperature")
 				}
+				lastUpdateTemp = time.Now()
 			} else {
 				var (
 					updateDeviceState        = false
@@ -1196,7 +1197,6 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 			}
 		}
 	}
-
 }
 
 func (s *service) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models.GetStatesOnHomeAssistantRestartInput) error {
