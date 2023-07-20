@@ -462,20 +462,22 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 	//////////////////////////////////////////////////////////////////
 	//  Compare new statuses with old statuses and update  MQTT     //
 	//////////////////////////////////////////////////////////////////
+	var updateTemperature, updateMode, updateSwingMode, updateFanMode bool
+
 	readDeviceStatusInput := &models_repo.ReadDeviceStatusInput{
 		Mac: input.Mac,
 	}
 
 	readDeviceStatusReturn, err := s.cache.ReadDeviceStatus(ctx, logger, readDeviceStatusInput)
 	if err != nil {
-		logger.Error().Err(err).Interface("input", readDeviceStatusInput).Msg("Failed to read the device status")
-		return err
-	}
-
-	var updateTemperature, updateMode, updateSwingMode, updateFanMode bool
-
-	if readDeviceStatusReturn == nil {
-		updateTemperature, updateMode, updateSwingMode, updateFanMode = true, true, true, true
+		switch err {
+		case models_repo.ErrorDeviceStatusNotFound:
+			updateTemperature, updateMode, updateSwingMode, updateFanMode = true, true, true, true
+			err = nil
+		default:
+			logger.Error().Err(err).Interface("input", readDeviceStatusInput).Msg("Failed to read the device status")
+			return err
+		}
 	} else {
 		if deviceStatusMqtt.SwingMode != readDeviceStatusReturn.Status.SwingMode {
 			updateSwingMode = true
