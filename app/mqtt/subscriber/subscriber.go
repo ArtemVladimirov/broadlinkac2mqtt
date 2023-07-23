@@ -23,7 +23,7 @@ func NewMqttReceiver(service app.Service, mqttConfig models.ConfigMqtt) *mqttSub
 	}
 }
 
-func (m *mqttSubscriber) UpdateFanModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler {
+func (m *mqttSubscriber) UpdateFanModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
 	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
 
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/fan_mode/set"), m.mqttConfig.TopicPrefix+"/")
@@ -35,7 +35,7 @@ func (m *mqttSubscriber) UpdateFanModeCommandTopic(logger *zerolog.Logger) mqtt.
 			FanMode: string(msg.Payload()),
 		}
 
-		err := m.service.UpdateFanMode(context.TODO(), logger, updateFanModeInput)
+		err := m.service.UpdateFanMode(ctx, logger, updateFanModeInput)
 		if err != nil {
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateFanModeInput).Msg("failed to update fan mode")
 			return
@@ -43,7 +43,7 @@ func (m *mqttSubscriber) UpdateFanModeCommandTopic(logger *zerolog.Logger) mqtt.
 	})
 }
 
-func (m *mqttSubscriber) UpdateSwingModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler {
+func (m *mqttSubscriber) UpdateSwingModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
 	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/swing_mode/set"), m.mqttConfig.TopicPrefix+"/")
 
@@ -54,7 +54,7 @@ func (m *mqttSubscriber) UpdateSwingModeCommandTopic(logger *zerolog.Logger) mqt
 			SwingMode: string(msg.Payload()),
 		}
 
-		err := m.service.UpdateSwingMode(context.TODO(), logger, updateSwingModeInput)
+		err := m.service.UpdateSwingMode(ctx, logger, updateSwingModeInput)
 		if err != nil {
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateSwingModeInput).Msg("failed to update swing mode")
 			return
@@ -62,7 +62,7 @@ func (m *mqttSubscriber) UpdateSwingModeCommandTopic(logger *zerolog.Logger) mqt
 	})
 }
 
-func (m *mqttSubscriber) UpdateModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler {
+func (m *mqttSubscriber) UpdateModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
 	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/mode/set"), m.mqttConfig.TopicPrefix+"/")
 
@@ -73,7 +73,7 @@ func (m *mqttSubscriber) UpdateModeCommandTopic(logger *zerolog.Logger) mqtt.Mes
 			Mode: string(msg.Payload()),
 		}
 
-		err := m.service.UpdateMode(context.TODO(), logger, updateModeInput)
+		err := m.service.UpdateMode(ctx, logger, updateModeInput)
 		if err != nil {
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateModeInput).Msg("failed to update mode")
 			return
@@ -81,7 +81,7 @@ func (m *mqttSubscriber) UpdateModeCommandTopic(logger *zerolog.Logger) mqtt.Mes
 	})
 }
 
-func (m *mqttSubscriber) UpdateTemperatureCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler {
+func (m *mqttSubscriber) UpdateTemperatureCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
 	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/temp/set"), m.mqttConfig.TopicPrefix+"/")
 
@@ -98,7 +98,7 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(logger *zerolog.Logger) m
 			Temperature: float32(temperature),
 		}
 
-		err = m.service.UpdateTemperature(context.TODO(), logger, updateTemperatureInput)
+		err = m.service.UpdateTemperature(ctx, logger, updateTemperatureInput)
 		if err != nil {
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateTemperatureInput).Msg("failed to update temperature")
 			return
@@ -106,7 +106,7 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(logger *zerolog.Logger) m
 	})
 }
 
-func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(logger *zerolog.Logger) mqtt.MessageHandler {
+func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
 	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
 
 		logger.Debug().Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new home assistant LWT message")
@@ -115,7 +115,7 @@ func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(logger *zerolog.Logger)
 			Status: string(msg.Payload()),
 		}
 
-		err := m.service.GetStatesOnHomeAssistantRestart(context.TODO(), logger, getStatesOnHomeAssistantRestartInput)
+		err := m.service.GetStatesOnHomeAssistantRestart(ctx, logger, getStatesOnHomeAssistantRestartInput)
 		if err != nil {
 			logger.Error().Err(err).Interface("input", getStatesOnHomeAssistantRestartInput).Msg("failed to get states")
 			return
