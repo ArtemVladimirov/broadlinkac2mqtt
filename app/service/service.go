@@ -1113,7 +1113,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 					if message.SwingMode.UpdatedAt != swingModeUpdatedTime {
 						updateDeviceState = true
 						swingMode = &message.SwingMode.SwingMode
-						swingModeUpdatedTime = message.FanMode.UpdatedAt
+						swingModeUpdatedTime = message.SwingMode.UpdatedAt
 
 						publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
 							Mac:       input.Mac,
