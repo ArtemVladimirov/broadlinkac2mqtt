@@ -11,8 +11,7 @@ type ConfigMqtt struct {
 }
 
 type DiscoveryTopic struct {
-	FanModeCommandTopic string `json:"fan_mode_command_topic" example:"aircon/34ea345b0fd4/fan_mode/set"`
-	//ActionTopic             string                     `json:"action_topic" example:"aircon/34ea345b0fd4/action/set"`  ModeStateTopic Alternative????
+	FanModeCommandTopic     string                     `json:"fan_mode_command_topic" example:"aircon/34ea345b0fd4/fan_mode/set"`
 	SwingModeCommandTopic   string                     `json:"swing_mode_command_topic" example:"aircon/34ea345b0fd4/swing_mode/set"`
 	SwingModes              []string                   `json:"swing_modes"` // 'on' 'off'
 	TempStep                float32                    `json:"temp_step" example:"0.5"`
