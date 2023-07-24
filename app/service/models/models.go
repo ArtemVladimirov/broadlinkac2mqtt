@@ -92,10 +92,12 @@ func (raw DeviceStatusRaw) ConvertToDeviceStatusHass() (mqttStatus DeviceStatusH
 	}
 
 	// Display Status
+	// Attention. Inverted logic
+	// Byte 0 - turn ON, Byte 1 - turn OFF
 	if raw.Display == 1 {
-		deviceStatusMqtt.DisplaySwitch = "ON"
-	} else {
 		deviceStatusMqtt.DisplaySwitch = "OFF"
+	} else {
+		deviceStatusMqtt.DisplaySwitch = "ON"
 	}
 
 	return deviceStatusMqtt
