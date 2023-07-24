@@ -15,23 +15,26 @@ type MqttSubscriber interface {
 	UpdateSwingModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 	UpdateModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 	UpdateTemperatureCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
+	UpdateDisplaySwitchCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 
 	GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 }
 
 type MqttPublisher interface {
-	PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models_mqtt.PublishDiscoveryTopicInput) error
+	PublishClimateDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models_mqtt.PublishClimateDiscoveryTopicInput) error
+	PublishSwitchDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models_mqtt.PublishSwitchDiscoveryTopicInput) error
 	PublishAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishAmbientTempInput) error
 	PublishTemperature(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishTemperatureInput) error
 	PublishMode(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishModeInput) error
 	PublishSwingMode(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishSwingModeInput) error
 	PublishFanMode(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishFanModeInput) error
 	PublishAvailability(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishAvailabilityInput) error
+	PublishDisplaySwitch(ctx context.Context, logger *zerolog.Logger, input *models_mqtt.PublishDisplaySwitchInput) error
 }
 
 type Service interface {
 	PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input *models_service.PublishDiscoveryTopicInput) error
-	CreateDevice(ctx context.Context, logger *zerolog.Logger, input *models_service.CreateDeviceInput) (*models_service.CreateDeviceReturn, error)
+	CreateDevice(ctx context.Context, logger *zerolog.Logger, input *models_service.CreateDeviceInput) error
 	AuthDevice(ctx context.Context, logger *zerolog.Logger, input *models_service.AuthDeviceInput) error
 	GetDeviceAmbientTemperature(ctx context.Context, logger *zerolog.Logger, input *models_service.GetDeviceAmbientTemperatureInput) error
 	GetDeviceStates(ctx context.Context, logger *zerolog.Logger, input *models_service.GetDeviceStatesInput) error
@@ -40,12 +43,13 @@ type Service interface {
 	UpdateMode(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateModeInput) error
 	UpdateSwingMode(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateSwingModeInput) error
 	UpdateTemperature(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateTemperatureInput) error
+	UpdateDisplaySwitch(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateDisplaySwitchInput) error
 
 	UpdateDeviceAvailability(ctx context.Context, logger *zerolog.Logger, input *models_service.UpdateDeviceAvailabilityInput) error
 
 	StartDeviceMonitoring(ctx context.Context, logger *zerolog.Logger, input *models_service.StartDeviceMonitoringInput) error
 
-	GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models_service.GetStatesOnHomeAssistantRestartInput) error
+	PublishStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger, input *models_service.PublishStatesOnHomeAssistantRestartInput) error
 }
 
 type WebClient interface {
@@ -62,9 +66,6 @@ type Cache interface {
 	UpsertAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertAmbientTempInput) error
 	ReadAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadAmbientTempInput) (*models_cache.ReadAmbientTempReturn, error)
 
-	UpsertDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertDeviceStatusInput) error
-	ReadDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadDeviceStatusInput) (*models_cache.ReadDeviceStatusReturn, error)
-
 	UpsertDeviceStatusRaw(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertDeviceStatusRawInput) error
 	ReadDeviceStatusRaw(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadDeviceStatusRawInput) (*models_cache.ReadDeviceStatusRawReturn, error)
 
@@ -72,6 +73,7 @@ type Cache interface {
 	UpsertMqttSwingModeMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertMqttSwingModeMessageInput) error
 	UpsertMqttFanModeMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertMqttFanModeMessageInput) error
 	UpsertMqttTemperatureMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertMqttTemperatureMessageInput) error
+	UpsertMqttDisplaySwitchMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.UpsertMqttDisplaySwitchMessageInput) error
 
 	ReadMqttMessage(ctx context.Context, logger *zerolog.Logger, input *models_cache.ReadMqttMessageInput) (*models_cache.ReadMqttMessageReturn, error)
 

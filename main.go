@@ -132,7 +132,7 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 
 	// Create Device
 	for _, device := range app.devices {
-		_, err := app.wsService.CreateDevice(ctx, logger, &workspaceServiceModels.CreateDeviceInput{
+		err := app.wsService.CreateDevice(ctx, logger, &workspaceServiceModels.CreateDeviceInput{
 			Config: workspaceServiceModels.DeviceConfig{
 				Mac:  device.Mac,
 				Ip:   device.Ip,

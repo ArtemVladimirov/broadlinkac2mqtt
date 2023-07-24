@@ -9,10 +9,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	deviceClass string = "climate"
-)
-
 type mqttPublisher struct {
 	mqttConfig models.ConfigMqtt
 	client     paho.Client
@@ -25,19 +21,42 @@ func NewMqttSender(mqttConfig models.ConfigMqtt, client paho.Client) *mqttPublis
 	}
 }
 
-func (m *mqttPublisher) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishDiscoveryTopicInput) error {
+func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishClimateDiscoveryTopicInput) error {
 
 	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
 	}
 
-	payload, err := json.Marshal(input.DiscoveryTopic)
+	payload, err := json.Marshal(input.Topic)
 	if err != nil {
-		logger.Error().Err(err).Interface("input", input.DiscoveryTopic).Msg("Failed to marshal discovery topic")
+		logger.Error().Err(err).Interface("input", input.Topic).Msg("Failed to marshal discovery topic")
 		return err
 	}
 
-	topic := *m.mqttConfig.AutoDiscoveryTopic + "/" + deviceClass + "/" + input.DiscoveryTopic.UniqueId + "/config"
+	topic := *m.mqttConfig.AutoDiscoveryTopic + "/" + models.DeviceClassClimate + "/" + input.Topic.UniqueId + "/config"
+
+	token := m.client.Publish(topic, 0, m.mqttConfig.AutoDiscoveryTopicRetain, string(payload))
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-token.Done():
+		return nil
+	}
+}
+
+func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishSwitchDiscoveryTopicInput) error {
+
+	if m.mqttConfig.AutoDiscoveryTopic == nil {
+		return nil
+	}
+
+	payload, err := json.Marshal(input.Topic)
+	if err != nil {
+		logger.Error().Err(err).Interface("input", input.Topic).Msg("Failed to marshal discovery topic")
+		return err
+	}
+
+	topic := *m.mqttConfig.AutoDiscoveryTopic + "/" + models.DeviceClassSwitch + "/" + input.Topic.UniqueId + "/config"
 
 	token := m.client.Publish(topic, 0, m.mqttConfig.AutoDiscoveryTopicRetain, string(payload))
 	select {
@@ -118,6 +137,19 @@ func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *zerolog
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/availability/value"
 
 	token := m.client.Publish(topic, 0, false, input.Availability)
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-token.Done():
+		return nil
+	}
+}
+
+func (m *mqttPublisher) PublishDisplaySwitch(ctx context.Context, logger *zerolog.Logger, input *models.PublishDisplaySwitchInput) error {
+
+	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/display/switch/value"
+
+	token := m.client.Publish(topic, 0, false, input.Status)
 	select {
 	case <-ctx.Done():
 		return nil

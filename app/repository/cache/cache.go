@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
-	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	"github.com/rs/zerolog"
 	"sync"
 )
@@ -122,58 +121,6 @@ func (c *cache) ReadAmbientTemp(ctx context.Context, logger *zerolog.Logger, inp
 	}
 
 	return &models.ReadAmbientTempReturn{Temperature: *device.DeviceStatus.AmbientTemp}, nil
-}
-
-func (c *cache) UpsertDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceStatusInput) error {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	device, ok := c.devices[input.Mac]
-	if !ok {
-		message := "device is not found in cache"
-		logger.Error().Interface("input", input).Msg(message)
-		return models.ErrorDeviceNotFound
-	}
-
-	device.DeviceStatus.Temperature = &input.Status.Temperature
-	device.DeviceStatus.SwingMode = &input.Status.SwingMode
-	device.DeviceStatus.Mode = &input.Status.Mode
-	device.DeviceStatus.FanMode = &input.Status.FanMode
-
-	c.devices[input.Mac] = device
-
-	return nil
-}
-
-func (c *cache) ReadDeviceStatus(ctx context.Context, logger *zerolog.Logger, input *models.ReadDeviceStatusInput) (*models.ReadDeviceStatusReturn, error) {
-	var status models_service.DeviceStatusMqtt
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	device, ok := c.devices[input.Mac]
-	if !ok {
-		message := "device is not found in cache"
-		logger.Error().Interface("input", input).Msg(message)
-		return nil, models.ErrorDeviceNotFound
-	}
-
-	if device.DeviceStatus.FanMode == nil ||
-		device.DeviceStatus.Mode == nil ||
-		device.DeviceStatus.SwingMode == nil ||
-		device.DeviceStatus.Temperature == nil {
-		message := "device status is not found in cache"
-		logger.Debug().Interface("input", input).Msg(message)
-		return nil, models.ErrorDeviceStatusNotFound
-	}
-
-	status.FanMode = *device.DeviceStatus.FanMode
-	status.SwingMode = *device.DeviceStatus.SwingMode
-	status.Temperature = *device.DeviceStatus.Temperature
-	status.Mode = *device.DeviceStatus.Mode
-
-	return &models.ReadDeviceStatusReturn{Status: status}, nil
 }
 
 func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *zerolog.Logger, input *models.UpsertDeviceStatusRawInput) error {
@@ -301,6 +248,7 @@ func (c *cache) ReadMqttMessage(ctx context.Context, logger *zerolog.Logger, inp
 	state.Mode = device.MqttLastMessage.Mode
 	state.SwingMode = device.MqttLastMessage.SwingMode
 	state.FanMode = device.MqttLastMessage.FanMode
+	state.IsDisplayOn = device.MqttLastMessage.DisplaySwitch
 
 	return &state, nil
 }
@@ -355,4 +303,22 @@ func (c *cache) ReadAuthedDevices(ctx context.Context, logger *zerolog.Logger) (
 	}
 
 	return &models.ReadAuthedDevicesReturn{Macs: macs}, nil
+}
+
+func (c *cache) UpsertMqttDisplaySwitchMessage(ctx context.Context, logger *zerolog.Logger, input *models.UpsertMqttDisplaySwitchMessageInput) error {
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	device, ok := c.devices[input.Mac]
+	if !ok {
+		message := "device is not found in cache"
+		logger.Error().Interface("input", input).Msg(message)
+		return models.ErrorDeviceNotFound
+	}
+
+	device.MqttLastMessage.DisplaySwitch = &input.DisplaySwitch
+	c.devices[input.Mac] = device
+
+	return nil
 }
