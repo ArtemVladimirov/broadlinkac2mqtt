@@ -64,7 +64,7 @@ var (
 		"fan_only": 0b00000110,
 	}
 
-	onOffStatusesInvert = map[string]int{
+	onOffStatuses = map[string]byte{
 		"ON":  1,
 		"OFF": 0,
 	}

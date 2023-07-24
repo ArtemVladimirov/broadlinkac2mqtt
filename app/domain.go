@@ -11,12 +11,12 @@ import (
 )
 
 type MqttSubscriber interface {
-	UpdateFanModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
-	UpdateSwingModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
-	UpdateModeCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
-	UpdateTemperatureCommandTopic(logger *zerolog.Logger) mqtt.MessageHandler
+	UpdateFanModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
+	UpdateSwingModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
+	UpdateModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
+	UpdateTemperatureCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 
-	GetStatesOnHomeAssistantRestart(logger *zerolog.Logger) mqtt.MessageHandler
+	GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler
 }
 
 type MqttPublisher interface {

@@ -121,7 +121,7 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 	}
 
 	if app.autoDiscoveryTopic != nil {
-		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(logger)); token.Wait() && token.Error() != nil {
+		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(ctx, logger)); token.Wait() && token.Error() != nil {
 			err := token.Error()
 			if err != nil {
 				logger.Error().Msg("Failed to subscribe on LWT")
@@ -158,7 +158,7 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 			}
 
 			// Subscribe on MQTT handlers
-			workspaceMqttReceiver.Routers(logger, device.Mac, app.topicPrefix, app.client, app.wsMqttReceiver)
+			workspaceMqttReceiver.Routers(ctx, logger, device.Mac, app.topicPrefix, app.client, app.wsMqttReceiver)
 
 			//Publish Discovery Topic
 			if app.autoDiscoveryTopic != nil {
@@ -247,6 +247,7 @@ func main() {
 	// Run
 	err = application.Run(ctx, &logger)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to get a new App")
+		logger.Error().Err(err).Msg("failed to get a new App")
+		return
 	}
 }

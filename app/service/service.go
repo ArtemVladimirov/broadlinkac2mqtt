@@ -306,7 +306,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 		}
 
 		// Save the new value in storage
-		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: float32(ambientTemp), Mac: input.Mac}
+		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: ambientTemp, Mac: input.Mac}
 
 		err = s.cache.UpsertAmbientTemp(ctx, logger, upsertAmbientTempInput)
 		if err != nil {
@@ -421,7 +421,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 
 	// Modes
 	//Modes: []string{"auto", "off", "cool", "heat", "dry", "fan_only"},
-	if int(raw.Power) == onOffStatusesInvert["OFF"] {
+	if raw.Power == onOffStatuses["OFF"] {
 		deviceStatusMqtt.Mode = "off"
 	} else {
 		status, ok := modeStatuses[int(raw.Mode)]
@@ -441,11 +441,11 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *zerolog.Logger, i
 		deviceStatusMqtt.FanMode = "error"
 	}
 
-	if int(raw.Mute) == onOffStatusesInvert["ON"] {
+	if raw.Mute == onOffStatuses["ON"] {
 		deviceStatusMqtt.FanMode = "mute"
 	}
 
-	if int(raw.Turbo) == onOffStatusesInvert["ON"] {
+	if raw.Turbo == onOffStatuses["ON"] {
 		deviceStatusMqtt.FanMode = "turbo"
 	}
 
@@ -898,9 +898,9 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 	var fanMode, turbo, mute byte
 	if input.FanMode != nil {
 		if *input.FanMode == "mute" {
-			mute = byte(onOffStatusesInvert["ON"])
+			mute = onOffStatuses["ON"]
 		} else if *input.FanMode == "turbo" {
-			turbo = byte(onOffStatusesInvert["ON"])
+			turbo = onOffStatuses["ON"]
 		} else {
 			key, ok := fanStatusesInvert[*input.FanMode]
 			if !ok {
@@ -912,8 +912,8 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 				return models.ErrorInvalidParameterFanMode
 			} else {
 				fanMode = byte(key)
-				turbo = byte(onOffStatusesInvert["OFF"])
-				mute = byte(onOffStatusesInvert["OFF"])
+				turbo = onOffStatuses["OFF"]
+				mute = onOffStatuses["OFF"]
 			}
 		}
 	} else {
@@ -929,21 +929,21 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 		switch strings.ToLower(*input.Mode) {
 		case "cool":
 			mode = byte(modeStatusesInvert["cool"])
-			power = byte(onOffStatusesInvert["ON"])
+			power = onOffStatuses["ON"]
 		case "heat":
 			mode = byte(modeStatusesInvert["heat"])
-			power = byte(onOffStatusesInvert["ON"])
+			power = onOffStatuses["ON"]
 		case "auto":
 			mode = byte(modeStatusesInvert["auto"])
-			power = byte(onOffStatusesInvert["ON"])
+			power = onOffStatuses["ON"]
 		case "dry":
 			mode = byte(modeStatusesInvert["dry"])
-			power = byte(onOffStatusesInvert["ON"])
+			power = onOffStatuses["ON"]
 		case "fan_only":
 			mode = byte(modeStatusesInvert["fan_only"])
-			power = byte(onOffStatusesInvert["ON"])
+			power = onOffStatuses["ON"]
 		case "off":
-			power = byte(onOffStatusesInvert["OFF"])
+			power = onOffStatuses["OFF"]
 		default:
 			logger.Error().Interface("input", input).Str("device", input.Mac).
 				Str("mode", *input.Mode).
@@ -981,11 +981,11 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 	payload[21] = 0b00000000
 	payload[22] = 0b00000000
 
-	// Additional preparations
-	var requestPayload [32]byte
-	requestPayload[0] = byte(len(payload) + 2)
+	// Add checksum
+	var payloadChecksum [32]byte
+	payloadChecksum[0] = byte(len(payload) + 2)
 
-	copy(requestPayload[2:], payload[:])
+	copy(payloadChecksum[2:], payload[:])
 
 	var checksum int
 	for i := 0; i < len(payload); i += 2 {
@@ -994,13 +994,12 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 	checksum = (checksum >> 16) + (checksum & 0xFFFF)
 	checksum = ^checksum & 0xFFFF
 
-	requestPayload[len(payload)+2] = byte((checksum >> 8) & 0xFF)
-	requestPayload[len(payload)+3] = byte(checksum & 0xFF)
+	payloadChecksum[len(payload)+2] = byte((checksum >> 8) & 0xFF)
+	payloadChecksum[len(payload)+3] = byte(checksum & 0xFF)
 
-	// Send command
 	sendCommandInput := &models.SendCommandInput{
 		Command: 0x6a,
-		Payload: requestPayload[:],
+		Payload: payloadChecksum[:],
 		Mac:     input.Mac,
 	}
 
@@ -1088,6 +1087,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 						err := s.mqtt.PublishMode(ctx, logger, publishModeInput)
 						if err != nil {
 							logger.Error().Interface("input", publishModeInput).Str("device", input.Mac).Msg("failed to publish mode to mqtt")
+							return err
 						}
 					}
 				}
@@ -1105,6 +1105,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 						err := s.mqtt.PublishFanMode(ctx, logger, publishFanModeInput)
 						if err != nil {
 							logger.Error().Interface("input", publishFanModeInput).Str("device", input.Mac).Msg("failed to publish fan mode to mqtt")
+							return err
 						}
 					}
 				}
@@ -1122,6 +1123,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 						err := s.mqtt.PublishSwingMode(ctx, logger, publishSwingModeInput)
 						if err != nil {
 							logger.Error().Interface("input", publishSwingModeInput).Str("device", input.Mac).Msg("failed to publish swing mode to mqtt")
+							return err
 						}
 					}
 				}
@@ -1139,6 +1141,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 						err := s.mqtt.PublishTemperature(ctx, logger, publishTemperatureModeInput)
 						if err != nil {
 							logger.Error().Interface("input", publishTemperatureModeInput).Str("device", input.Mac).Msg("failed to publish temperature to mqtt")
+							return err
 						}
 					}
 				}
@@ -1148,7 +1151,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 						err = s.GetDeviceStates(ctx, logger, &models.GetDeviceStatesInput{Mac: input.Mac})
 						if err != nil {
 							logger.Error().Err(err).Interface("device", input.Mac).Msg("Failed to get AC States")
-							if int(time.Now().Sub(lastUpdateState).Seconds()) > s.updateInterval*3 && isDeviceAvailable {
+							if time.Now().Sub(lastUpdateState).Seconds() > float64(s.updateInterval)*3 && isDeviceAvailable {
 								isDeviceAvailable = false
 								updateDeviceAvailabilityInput := &models.UpdateDeviceAvailabilityInput{
 									Mac:          input.Mac,
@@ -1157,6 +1160,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
 								if err != nil {
 									logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
+									return err
 								}
 							}
 						} else {
@@ -1170,6 +1174,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
 								if err != nil {
 									logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceAvailabilityInput).Msg("Failed to update device availability")
+									return err
 								}
 							}
 							time.Sleep(time.Millisecond * 500)
@@ -1190,6 +1195,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *zerolog.Log
 					err := s.UpdateDeviceStates(ctx, logger, updateDeviceStatesInput)
 					if err != nil {
 						logger.Error().Err(err).Str("device", input.Mac).Interface("input", updateDeviceStatesInput).Msg("Failed to update device states")
+						return err
 					} else {
 						lastUpdateState = time.UnixMicro(0)
 					}
