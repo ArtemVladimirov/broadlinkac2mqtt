@@ -9,16 +9,21 @@ import (
 
 func Routers(ctx context.Context, logger *zerolog.Logger, mac string, topicPrefix string, client mqtt.Client, handler app.MqttSubscriber) {
 
-	if token := client.Subscribe(topicPrefix+"/"+mac+"/fan_mode/set", 0, handler.UpdateFanModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
+	prefix := topicPrefix + "/" + mac
+
+	if token := client.Subscribe(prefix+"/fan_mode/set", 0, handler.UpdateFanModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
 		logger.Error().Err(token.Error())
 	}
-	if token := client.Subscribe(topicPrefix+"/"+mac+"/swing_mode/set", 0, handler.UpdateSwingModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
+	if token := client.Subscribe(prefix+"/swing_mode/set", 0, handler.UpdateSwingModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
 		logger.Error().Err(token.Error())
 	}
-	if token := client.Subscribe(topicPrefix+"/"+mac+"/mode/set", 0, handler.UpdateModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
+	if token := client.Subscribe(prefix+"/mode/set", 0, handler.UpdateModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
 		logger.Error().Err(token.Error())
 	}
-	if token := client.Subscribe(topicPrefix+"/"+mac+"/temp/set", 0, handler.UpdateTemperatureCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
+	if token := client.Subscribe(prefix+"/temp/set", 0, handler.UpdateTemperatureCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
+		logger.Error().Err(token.Error())
+	}
+	if token := client.Subscribe(prefix+"/display/switch/set", 0, handler.UpdateDisplaySwitchCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
 		logger.Error().Err(token.Error())
 	}
 

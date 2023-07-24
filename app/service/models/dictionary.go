@@ -1,7 +1,15 @@
-package service
+package models
+
+const (
+	StatusOn  byte = 1
+	StatusOff byte = 0
+
+	StatusOnline  = "online"
+	StatusOffline = "offline"
+)
 
 var (
-	verticalFixationStatuses = map[int]string{
+	VerticalFixationStatuses = map[int]string{
 		0b00000001: "top",
 		0b00000010: "middle1",
 		0b00000011: "middle2",
@@ -11,7 +19,7 @@ var (
 		0b00000111: "auto",
 	}
 
-	verticalFixationStatusesInvert = map[string]int{
+	VerticalFixationStatusesInvert = map[string]int{
 		"top":     0b00000001,
 		"middle1": 0b00000010,
 		"middle2": 0b00000011,
@@ -32,7 +40,7 @@ var (
 	//	1: "OFF",
 	//}
 
-	fanStatuses = map[int]string{
+	FanStatuses = map[int]string{
 		0b00000011: "low",
 		0b00000010: "medium",
 		0b00000001: "high",
@@ -40,7 +48,7 @@ var (
 		0b00000000: "none",
 	}
 
-	fanStatusesInvert = map[string]int{
+	FanStatusesInvert = map[string]int{
 		"low":    0b00000011,
 		"medium": 0b00000010,
 		"high":   0b00000001,
@@ -48,7 +56,7 @@ var (
 		"none":   0b00000000,
 	}
 
-	modeStatuses = map[int]string{
+	ModeStatuses = map[int]string{
 		0b00000001: "cool",
 		0b00000010: "dry",
 		0b00000100: "heat",
@@ -56,16 +64,11 @@ var (
 		0b00000110: "fan_only",
 	}
 
-	modeStatusesInvert = map[string]int{
+	ModeStatusesInvert = map[string]int{
 		"cool":     0b00000001,
 		"dry":      0b00000010,
 		"heat":     0b00000100,
 		"auto":     0b00000000,
 		"fan_only": 0b00000110,
-	}
-
-	onOffStatuses = map[string]byte{
-		"ON":  1,
-		"OFF": 0,
 	}
 )

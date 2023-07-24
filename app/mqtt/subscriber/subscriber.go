@@ -24,7 +24,7 @@ func NewMqttReceiver(service app.Service, mqttConfig models.ConfigMqtt) *mqttSub
 }
 
 func (m *mqttSubscriber) UpdateFanModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
-	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+	return func(c mqtt.Client, msg mqtt.Message) {
 
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/fan_mode/set"), m.mqttConfig.TopicPrefix+"/")
 
@@ -40,11 +40,11 @@ func (m *mqttSubscriber) UpdateFanModeCommandTopic(ctx context.Context, logger *
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateFanModeInput).Msg("failed to update fan mode")
 			return
 		}
-	})
+	}
 }
 
 func (m *mqttSubscriber) UpdateSwingModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
-	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+	return func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/swing_mode/set"), m.mqttConfig.TopicPrefix+"/")
 
 		logger.Debug().Str("device", mac).Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new update swing mode message")
@@ -59,11 +59,11 @@ func (m *mqttSubscriber) UpdateSwingModeCommandTopic(ctx context.Context, logger
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateSwingModeInput).Msg("failed to update swing mode")
 			return
 		}
-	})
+	}
 }
 
 func (m *mqttSubscriber) UpdateModeCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
-	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+	return func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/mode/set"), m.mqttConfig.TopicPrefix+"/")
 
 		logger.Debug().Str("device", mac).Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new update mode message")
@@ -78,11 +78,11 @@ func (m *mqttSubscriber) UpdateModeCommandTopic(ctx context.Context, logger *zer
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateModeInput).Msg("failed to update mode")
 			return
 		}
-	})
+	}
 }
 
 func (m *mqttSubscriber) UpdateTemperatureCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
-	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+	return func(c mqtt.Client, msg mqtt.Message) {
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/temp/set"), m.mqttConfig.TopicPrefix+"/")
 
 		logger.Debug().Str("device", mac).Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new update temperature mode message")
@@ -103,22 +103,41 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(ctx context.Context, logg
 			logger.Error().Err(err).Str("device", mac).Interface("input", updateTemperatureInput).Msg("failed to update temperature")
 			return
 		}
-	})
+	}
 }
 
 func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
-	return mqtt.MessageHandler(func(c mqtt.Client, msg mqtt.Message) {
+	return func(c mqtt.Client, msg mqtt.Message) {
 
 		logger.Debug().Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new home assistant LWT message")
 
-		getStatesOnHomeAssistantRestartInput := &models_service.GetStatesOnHomeAssistantRestartInput{
+		getStatesOnHomeAssistantRestartInput := &models_service.PublishStatesOnHomeAssistantRestartInput{
 			Status: string(msg.Payload()),
 		}
 
-		err := m.service.GetStatesOnHomeAssistantRestart(ctx, logger, getStatesOnHomeAssistantRestartInput)
+		err := m.service.PublishStatesOnHomeAssistantRestart(ctx, logger, getStatesOnHomeAssistantRestartInput)
 		if err != nil {
 			logger.Error().Err(err).Interface("input", getStatesOnHomeAssistantRestartInput).Msg("failed to get states")
 			return
 		}
-	})
+	}
+}
+
+func (m *mqttSubscriber) UpdateDisplaySwitchCommandTopic(ctx context.Context, logger *zerolog.Logger) mqtt.MessageHandler {
+	return func(c mqtt.Client, msg mqtt.Message) {
+		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/display/switch/set"), m.mqttConfig.TopicPrefix+"/")
+
+		logger.Debug().Str("device", mac).Str("payload", string(msg.Payload())).Str("topic", msg.Topic()).Msg("new update display status message")
+
+		updateDisplaySwitchInput := &models_service.UpdateDisplaySwitchInput{
+			Mac:    mac,
+			Status: string(msg.Payload()),
+		}
+
+		err := m.service.UpdateDisplaySwitch(ctx, logger, updateDisplaySwitchInput)
+		if err != nil {
+			logger.Error().Err(err).Str("device", mac).Interface("input", updateDisplaySwitchInput).Msg("failed to update mode")
+			return
+		}
+	}
 }

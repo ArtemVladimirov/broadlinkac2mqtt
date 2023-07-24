@@ -16,17 +16,14 @@ type Device struct {
 type DeviceStatus struct {
 	Availability *string
 	AmbientTemp  *float32
-	FanMode      *string
-	SwingMode    *string
-	Mode         *string
-	Temperature  *float32
 }
 
 type MqttStatus struct {
-	FanMode     *MqttFanModeMessage
-	SwingMode   *MqttSwingModeMessage
-	Mode        *MqttModeMessage
-	Temperature *MqttTemperatureMessage
+	FanMode       *MqttFanModeMessage
+	SwingMode     *MqttSwingModeMessage
+	Mode          *MqttModeMessage
+	Temperature   *MqttTemperatureMessage
+	DisplaySwitch *MqttDisplaySwitchMessage
 }
 
 type ReadDeviceConfigInput struct {
@@ -67,19 +64,6 @@ type ReadAmbientTempReturn struct {
 	Temperature float32
 }
 
-type ReadDeviceStatusInput struct {
-	Mac string
-}
-
-type ReadDeviceStatusReturn struct {
-	Status models_service.DeviceStatusMqtt
-}
-
-type UpsertDeviceStatusInput struct {
-	Mac    string
-	Status models_service.DeviceStatusMqtt
-}
-
 type ReadDeviceStatusRawInput struct {
 	Mac string
 }
@@ -113,6 +97,16 @@ type UpsertMqttFanModeMessageInput struct {
 	FanMode MqttFanModeMessage
 }
 
+type MqttDisplaySwitchMessage struct {
+	UpdatedAt   time.Time
+	IsDisplayOn bool
+}
+
+type UpsertMqttDisplaySwitchMessageInput struct {
+	Mac           string
+	DisplaySwitch MqttDisplaySwitchMessage
+}
+
 type MqttSwingModeMessage struct {
 	UpdatedAt time.Time
 	SwingMode string
@@ -142,6 +136,7 @@ type ReadMqttMessageReturn struct {
 	SwingMode   *MqttSwingModeMessage
 	FanMode     *MqttFanModeMessage
 	Mode        *MqttModeMessage
+	IsDisplayOn *MqttDisplaySwitchMessage
 }
 
 type UpsertDeviceAvailabilityInput struct {

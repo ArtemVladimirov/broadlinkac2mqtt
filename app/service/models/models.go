@@ -5,10 +5,8 @@ import (
 )
 
 type Device struct {
-	Config     DeviceConfig
-	Auth       DeviceAuth
-	StatusRaw  DeviceStatusRaw
-	StatusMqtt DeviceStatusMqtt
+	Config DeviceConfig
+	Auth   DeviceAuth
 }
 
 type DeviceConfig struct {
@@ -26,11 +24,12 @@ type DeviceAuth struct {
 	Iv            []byte
 }
 
-type DeviceStatusMqtt struct {
-	FanMode     string
-	SwingMode   string
-	Mode        string
-	Temperature float32
+type DeviceStatusHass struct {
+	FanMode       string
+	SwingMode     string
+	Mode          string
+	Temperature   float32
+	DisplaySwitch string
 }
 
 type DeviceStatusRaw struct {
@@ -49,6 +48,57 @@ type DeviceStatusRaw struct {
 	Mute               byte
 	Turbo              byte
 	Clean              byte
+}
+
+func (raw DeviceStatusRaw) ConvertToDeviceStatusHass() (mqttStatus DeviceStatusHass) {
+
+	var deviceStatusMqtt DeviceStatusHass
+
+	// Temperature
+	deviceStatusMqtt.Temperature = raw.Temperature
+
+	// Modes
+	if raw.Power == StatusOff {
+		deviceStatusMqtt.Mode = "off"
+	} else {
+		status, ok := ModeStatuses[int(raw.Mode)]
+		if ok {
+			deviceStatusMqtt.Mode = status
+		} else {
+			deviceStatusMqtt.Mode = "error"
+		}
+	}
+
+	// Fan Status
+	fanStatus, ok := FanStatuses[int(raw.FanSpeed)]
+	if ok {
+		deviceStatusMqtt.FanMode = fanStatus
+	} else {
+		deviceStatusMqtt.FanMode = "error"
+	}
+
+	if raw.Mute == StatusOn {
+		deviceStatusMqtt.FanMode = "mute"
+	}
+
+	if raw.Turbo == StatusOn {
+		deviceStatusMqtt.FanMode = "turbo"
+	}
+
+	// Swing Modes
+	verticalFixationStatus, ok := VerticalFixationStatuses[int(raw.FixationVertical)]
+	if ok {
+		deviceStatusMqtt.SwingMode = verticalFixationStatus
+	}
+
+	// Display Status
+	if raw.Display == 1 {
+		deviceStatusMqtt.DisplaySwitch = "ON"
+	} else {
+		deviceStatusMqtt.DisplaySwitch = "OFF"
+	}
+
+	return deviceStatusMqtt
 }
 
 type CreateDeviceInput struct {
@@ -90,9 +140,35 @@ type UpdateFanModeInput struct {
 	FanMode string
 }
 
+func (input UpdateFanModeInput) Validate() error {
+
+	var fanModes = []string{"auto", "low", "medium", "high", "turbo", "mute"}
+
+	for _, fanMode := range fanModes {
+		if fanMode == input.FanMode {
+			return nil
+		}
+	}
+
+	return ErrorInvalidParameterFanMode
+}
+
 type UpdateModeInput struct {
 	Mac  string
 	Mode string
+}
+
+func (input UpdateModeInput) Validate() error {
+
+	var modes = []string{"auto", "off", "cool", "heat", "dry", "fan_only"}
+
+	for _, mode := range modes {
+		if mode == input.Mode {
+			return nil
+		}
+	}
+
+	return ErrorInvalidParameterMode
 }
 
 type UpdateSwingModeInput struct {
@@ -100,9 +176,30 @@ type UpdateSwingModeInput struct {
 	SwingMode string
 }
 
+func (input UpdateSwingModeInput) Validate() error {
+
+	var swingModes = []string{"top", "middle1", "middle2", "middle3", "bottom", "swing", "auto"}
+
+	for _, swingMode := range swingModes {
+		if swingMode == input.SwingMode {
+			return nil
+		}
+	}
+
+	return ErrorInvalidParameterSwingMode
+}
+
 type UpdateTemperatureInput struct {
 	Mac         string
 	Temperature float32
+}
+
+func (input UpdateTemperatureInput) Validate() error {
+	if input.Temperature > 32 || input.Temperature < 16 {
+		return ErrorInvalidParameterTemperature
+	}
+
+	return nil
 }
 
 type UpdateDeviceStatesInput struct {
@@ -111,6 +208,7 @@ type UpdateDeviceStatesInput struct {
 	SwingMode   *string
 	Mode        *string
 	Temperature *float32
+	IsDisplayOn *bool
 }
 
 type CreateCommandPayloadReturn struct {
@@ -126,6 +224,18 @@ type StartDeviceMonitoringInput struct {
 	Mac string
 }
 
-type GetStatesOnHomeAssistantRestartInput struct {
+type PublishStatesOnHomeAssistantRestartInput struct {
 	Status string
+}
+
+type UpdateDisplaySwitchInput struct {
+	Mac    string
+	Status string
+}
+
+func (input *UpdateDisplaySwitchInput) Validate() error {
+	if input.Status != "ON" && input.Status != "OFF" {
+		return ErrorInvalidParameterDisplayStatus
+	}
+	return nil
 }

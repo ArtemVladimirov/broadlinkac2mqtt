@@ -1,5 +1,10 @@
 package models
 
+const (
+	DeviceClassClimate string = "climate"
+	DeviceClassSwitch  string = "switch"
+)
+
 type ConfigMqtt struct {
 	Broker                   string
 	User                     *string
@@ -10,7 +15,7 @@ type ConfigMqtt struct {
 	AutoDiscoveryTopicRetain bool
 }
 
-type DiscoveryTopic struct {
+type ClimateDiscoveryTopic struct {
 	FanModeCommandTopic     string                     `json:"fan_mode_command_topic" example:"aircon/34ea345b0fd4/fan_mode/set"`
 	SwingModeCommandTopic   string                     `json:"swing_mode_command_topic" example:"aircon/34ea345b0fd4/swing_mode/set"`
 	SwingModes              []string                   `json:"swing_modes"` // 'on' 'off'
@@ -33,6 +38,15 @@ type DiscoveryTopic struct {
 	Availability            DiscoveryTopicAvailability `json:"availability"`
 }
 
+type SwitchDiscoveryTopic struct {
+	Device       DiscoveryTopicDevice       `json:"device"`
+	Name         string                     `json:"name" example:"childroom"`
+	UniqueId     string                     `json:"unique_id" example:"34ea345b0fd4"`
+	StateTopic   string                     `json:"state_topic" example:"aircon/34ea345b0fd4/display/switch"`
+	CommandTopic string                     `json:"command_topic" example:"aircon/34ea345b0fd4/display/switch/set"`
+	Availability DiscoveryTopicAvailability `json:"availability"`
+}
+
 type DiscoveryTopicDevice struct {
 	Model string `json:"model" example:"Aircon"`
 	Mf    string `json:"mf" example:"Broadlink"`
@@ -47,8 +61,12 @@ type DiscoveryTopicAvailability struct {
 	Topic               string `json:"topic" example:"aircon/34ea345b0fd4/availability/value"`
 }
 
-type PublishDiscoveryTopicInput struct {
-	DiscoveryTopic DiscoveryTopic
+type PublishClimateDiscoveryTopicInput struct {
+	Topic ClimateDiscoveryTopic
+}
+
+type PublishSwitchDiscoveryTopicInput struct {
+	Topic SwitchDiscoveryTopic
 }
 
 type PublishAmbientTempInput struct {
@@ -79,4 +97,8 @@ type PublishFanModeInput struct {
 type PublishAvailabilityInput struct {
 	Mac          string
 	Availability string
+}
+type PublishDisplaySwitchInput struct {
+	Mac    string
+	Status string
 }
