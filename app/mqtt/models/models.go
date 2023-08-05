@@ -28,7 +28,7 @@ type ClimateDiscoveryTopic struct {
 	ModeCommandTopic        string                     `json:"mode_command_topic" example:"aircon/34ea345b0fd4/mode/set"`
 	ModeStateTopic          string                     `json:"mode_state_topic" example:"aircon/34ea345b0fd4/mode/value"`
 	Modes                   []string                   `json:"modes"` // [“auto”, “off”, “cool”, “heat”, “dry”, “fan_only”]
-	Name                    string                     `json:"name" example:"childroom"`
+	Name                    *string                    `json:"name"`
 	FanModes                []string                   `json:"fan_modes"` // : [“auto”, “low”, “medium”, “high”]
 	SwingModeStateTopic     string                     `json:"swing_mode_state_topic" example:"aircon/34ea345b0fd4/swing_mode/value"`
 	FanModeStateTopic       string                     `json:"fan_mode_state_topic" example:"aircon/34ea345b0fd4/fan_mode/value"`

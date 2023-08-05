@@ -709,7 +709,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			UniqueId:                input.Device.Mac + "_ac",
 			Availability:            availability,
 			CurrentTemperatureTopic: prefix + "/current_temp/value",
-			Name:                    "",
+			Name:                    nil,
 		},
 	}
 	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, logger, publishClimateDiscoveryTopicInput)
