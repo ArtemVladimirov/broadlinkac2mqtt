@@ -180,15 +180,13 @@ type UpdateSwingModeInput struct {
 
 func (input UpdateSwingModeInput) Validate() error {
 
-	var swingModes = []string{"top", "middle1", "middle2", "middle3", "bottom", "swing", "auto"}
-
-	for _, swingMode := range swingModes {
-		if swingMode == input.SwingMode {
-			return nil
-		}
+	_, ok := VerticalFixationStatusesInvert[input.SwingMode]
+	if !ok {
+		return ErrorInvalidParameterSwingMode
 	}
 
-	return ErrorInvalidParameterSwingMode
+	return nil
+
 }
 
 type UpdateTemperatureInput struct {

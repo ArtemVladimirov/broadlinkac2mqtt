@@ -709,7 +709,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			UniqueId:                input.Device.Mac + "_ac",
 			Availability:            availability,
 			CurrentTemperatureTopic: prefix + "/current_temp/value",
-			Name:                    input.Device.Name + " AC",
+			Name:                    "None",
 		},
 	}
 	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, logger, publishClimateDiscoveryTopicInput)
@@ -720,7 +720,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 	publishSwitchScreenDiscoveryTopicInput := models_mqtt.PublishSwitchDiscoveryTopicInput{
 		Topic: models_mqtt.SwitchDiscoveryTopic{
 			Device:       device,
-			Name:         input.Device.Name + " Screen",
+			Name:         "Screen",
 			UniqueId:     input.Device.Mac + "_screen",
 			StateTopic:   prefix + "/display/switch/value",
 			CommandTopic: prefix + "/display/switch/set",
