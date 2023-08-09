@@ -36,6 +36,7 @@ type ClimateDiscoveryTopic struct {
 	MaxTemp                 float32                    `json:"max_temp" example:"32.0"`
 	MinTemp                 float32                    `json:"min_temp" example:"16.0"`
 	Availability            DiscoveryTopicAvailability `json:"availability"`
+	Icon                    string                     `json:"icon"`
 }
 
 type SwitchDiscoveryTopic struct {
@@ -45,6 +46,7 @@ type SwitchDiscoveryTopic struct {
 	StateTopic   string                     `json:"state_topic" example:"aircon/34ea345b0fd4/display/switch"`
 	CommandTopic string                     `json:"command_topic" example:"aircon/34ea345b0fd4/display/switch/set"`
 	Availability DiscoveryTopicAvailability `json:"availability"`
+	Icon         string                     `json:"icon"`
 }
 
 type DiscoveryTopicDevice struct {
