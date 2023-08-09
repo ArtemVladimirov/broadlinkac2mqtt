@@ -13,7 +13,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -688,6 +687,11 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 		Topic:               prefix + "/availability/value",
 	}
 
+	var swingModes []string
+	for swingMode := range models.VerticalFixationStatusesInvert {
+		swingModes = append(swingModes, swingMode)
+	}
+
 	publishClimateDiscoveryTopicInput := models_mqtt.PublishClimateDiscoveryTopicInput{
 		Topic: models_mqtt.ClimateDiscoveryTopic{
 			FanModeCommandTopic:     prefix + "/fan_mode/set",
@@ -698,7 +702,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			Modes:                   []string{"auto", "off", "cool", "heat", "dry", "fan_only"},
 			SwingModeCommandTopic:   prefix + "/swing_mode/set",
 			SwingModeStateTopic:     prefix + "/swing_mode/value",
-			SwingModes:              []string{"top", "middle1", "middle2", "middle3", "bottom", "swing", "auto"},
+			SwingModes:              swingModes,
 			MinTemp:                 16,
 			MaxTemp:                 32,
 			TempStep:                0.5,
@@ -709,7 +713,8 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 			UniqueId:                input.Device.Mac + "_ac",
 			Availability:            availability,
 			CurrentTemperatureTopic: prefix + "/current_temp/value",
-			Name:                    input.Device.Name + " AC",
+			Name:                    nil,
+			Icon:                    "mdi:air-conditioner",
 		},
 	}
 	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, logger, publishClimateDiscoveryTopicInput)
@@ -720,11 +725,12 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *zerolog.Log
 	publishSwitchScreenDiscoveryTopicInput := models_mqtt.PublishSwitchDiscoveryTopicInput{
 		Topic: models_mqtt.SwitchDiscoveryTopic{
 			Device:       device,
-			Name:         input.Device.Name + " Screen",
+			Name:         "Screen",
 			UniqueId:     input.Device.Mac + "_screen",
 			StateTopic:   prefix + "/display/switch/value",
 			CommandTopic: prefix + "/display/switch/set",
 			Availability: availability,
+			Icon:         "mdi:tablet-dashboard",
 		},
 	}
 
@@ -978,8 +984,6 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 				return models.ErrorInvalidParameterFanMode
 			} else {
 				fanMode = byte(key)
-				turbo = models.StatusOff
-				mute = models.StatusOff
 			}
 		}
 	} else {
@@ -1003,29 +1007,22 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *zerolog.Logger
 	// MODE
 	var mode, power byte
 	if input.Mode != nil {
-		switch strings.ToLower(*input.Mode) {
-		case "cool":
-			mode = byte(models.ModeStatusesInvert["cool"])
-			power = models.StatusOn
-		case "heat":
-			mode = byte(models.ModeStatusesInvert["heat"])
-			power = models.StatusOn
-		case "auto":
-			mode = byte(models.ModeStatusesInvert["auto"])
-			power = models.StatusOn
-		case "dry":
-			mode = byte(models.ModeStatusesInvert["dry"])
-			power = models.StatusOn
-		case "fan_only":
-			mode = byte(models.ModeStatusesInvert["fan_only"])
-			power = models.StatusOn
-		case "off":
+		if *input.Mode == "off" {
+			mode = readDeviceStatusRawReturn.Status.Mode
 			power = models.StatusOff
-		default:
-			logger.Error().Interface("input", input).Str("device", input.Mac).
-				Str("mode", *input.Mode).
-				Err(models.ErrorInvalidParameterMode).
-				Msg("Invalid parameter mode")
+		} else {
+			key, ok := models.ModeStatusesInvert[*input.Mode]
+			if !ok {
+				logger.Error().Interface("input", input).Str("device", input.Mac).
+					Str("mode", *input.Mode).
+					Err(models.ErrorInvalidParameterMode).
+					Msg("Invalid parameter mode")
+
+				return models.ErrorInvalidParameterMode
+			}
+
+			mode = byte(key)
+			power = models.StatusOn
 		}
 	} else {
 		power = readDeviceStatusRawReturn.Status.Power
