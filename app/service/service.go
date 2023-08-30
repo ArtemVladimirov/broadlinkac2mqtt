@@ -228,10 +228,10 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *zerol
 		return err
 	}
 
-	if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
-		logger.Error().Err(models.ErrorInvalidResultPacket).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
-		return models.ErrorInvalidResultPacket
-	}
+	//if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
+	//	logger.Error().Err(models.ErrorInvalidResultPacket).Interface("input", sendCommandInput).Msg("Checksum is incorrect")
+	//	return models.ErrorInvalidResultPacket
+	//}
 
 	// Decode message
 	if len(response.Payload) >= 0x38 {
