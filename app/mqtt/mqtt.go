@@ -6,19 +6,19 @@ import (
 	"errors"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
 	paho "github.com/eclipse/paho.mqtt.golang"
-	"github.com/rs/zerolog"
+	"log/slog"
 	"net/url"
 	"os"
 	"time"
 )
 
-func NewMqttConfig(logger *zerolog.Logger, cfg config.Mqtt) (*paho.ClientOptions, error) {
+func NewMqttConfig(logger *slog.Logger, cfg config.Mqtt) (*paho.ClientOptions, error) {
 
 	//Configure MQTT Client
 	uri, err := url.Parse(cfg.Broker)
 	if err != nil {
 		message := "URL address is incorrect"
-		logger.Error().Msg(message)
+		logger.Error(message)
 		return nil, errors.New(message)
 	}
 
@@ -36,10 +36,10 @@ func NewMqttConfig(logger *zerolog.Logger, cfg config.Mqtt) (*paho.ClientOptions
 	opts.SetAutoReconnect(true)
 	opts.SetCleanSession(false)
 	opts.SetConnectionLostHandler(func(client paho.Client, err error) {
-		logger.Error().Err(err).Msg("MQTT connection lost")
+		logger.Error("MQTT connection lost", slog.Any("err", err))
 	})
 	opts.SetOnConnectHandler(func(client paho.Client) {
-		logger.Info().Err(err).Msg("Connected to MQTT")
+		logger.Info("Connected to MQTT")
 	})
 
 	if uri.Scheme == "mqtts" || uri.Scheme == "ssl" {
@@ -48,7 +48,8 @@ func NewMqttConfig(logger *zerolog.Logger, cfg config.Mqtt) (*paho.ClientOptions
 		if cfg.CertificateClient != nil && cfg.KeyClient != nil {
 			cert, err := tls.LoadX509KeyPair(*cfg.CertificateClient, *cfg.KeyClient)
 			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to load the client key pair")
+				logger.Error("Failed to load the client key pair", slog.Any("err", err))
+				return nil, err
 			}
 			tlsConfig.Certificates = []tls.Certificate{cert}
 		}
@@ -56,7 +57,8 @@ func NewMqttConfig(logger *zerolog.Logger, cfg config.Mqtt) (*paho.ClientOptions
 		if cfg.CertificateAuthority != nil {
 			caCert, err := os.ReadFile(*cfg.CertificateAuthority)
 			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to load the authority certificate")
+				logger.Error("Failed to load the authority certificate", slog.Any("err", err))
+				return nil, err
 			}
 
 			// Create a certificate pool and add the CA certificate

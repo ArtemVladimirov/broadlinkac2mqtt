@@ -14,8 +14,9 @@ import (
 	workspaceWebClient "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
 	paho "github.com/eclipse/paho.mqtt.golang"
-	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
@@ -34,7 +35,7 @@ type App struct {
 	client              paho.Client
 }
 
-func NewApp(logger *zerolog.Logger) (*App, error) {
+func NewApp(logger *slog.Logger) (*App, error) {
 
 	// Configuration
 	cfg, err := config.NewConfig(logger)
@@ -84,7 +85,7 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 
 		if len(device.Mac) != 12 {
 			msg := "mac address is wrong"
-			logger.Info().Str("mac", device.Mac).Msg(msg)
+			logger.Error("mac is incorrect", slog.String("device", device.Mac))
 			return nil, errors.New(msg)
 		}
 
@@ -109,13 +110,14 @@ func NewApp(logger *zerolog.Logger) (*App, error) {
 	return application, nil
 }
 
-func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
+func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 
 	// Run MQTT
 	if token := app.client.Connect(); token.Wait() && token.Error() != nil {
 		err := token.Error()
 		if err != nil {
-			logger.Error().Msg("Failed to connect mqtt")
+			logger.ErrorContext(ctx, "failed to connect mqtt",
+				slog.Any("err", err))
 			return err
 		}
 	}
@@ -124,7 +126,9 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(ctx, logger)); token.Wait() && token.Error() != nil {
 			err := token.Error()
 			if err != nil {
-				logger.Error().Msg("Failed to subscribe on LWT")
+				logger.ErrorContext(ctx, "failed to subscribe on LWT",
+					slog.Any("err", err))
+
 				return err
 			}
 		}
@@ -140,7 +144,8 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 				Port: device.Port,
 			}})
 		if err != nil {
-			logger.Error().Err(err).Msg("Failed to create the device")
+			logger.ErrorContext(ctx, "failed to create the device",
+				slog.Any("err", err))
 			return err
 		}
 	}
@@ -153,7 +158,8 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 				if err == nil {
 					break
 				}
-				logger.Error().Err(err).Str("device", device.Mac).Msg("Failed to Auth device " + device.Mac + ". Reconnect in 3 seconds...")
+				logger.ErrorContext(ctx, "failed to Auth device "+device.Mac+". Reconnect in 3 seconds...",
+					slog.Any("err", err))
 				time.Sleep(time.Second * 3)
 			}
 
@@ -181,15 +187,15 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 	killSignal := <-interrupt
 	switch killSignal {
 	case syscall.SIGKILL:
-		logger.Info().Msg("Got SIGKILL...")
+		logger.Info("Got SIGKILL...")
 	case syscall.SIGQUIT:
-		logger.Info().Msg("Got SIGQUIT...")
+		logger.Info("Got SIGQUIT...")
 	case syscall.SIGTERM:
-		logger.Info().Msg("Got SIGTERM...")
+		logger.Info("Got SIGTERM...")
 	case syscall.SIGINT:
-		logger.Info().Msg("Got SIGINT...")
+		logger.Info("Got SIGINT...")
 	default:
-		logger.Info().Msg("Undefined killSignal...")
+		logger.Info("Undefined killSignal...")
 	}
 	// Publish offline states for devices
 	g := new(errgroup.Group)
@@ -201,7 +207,9 @@ func (app *App) Run(ctx context.Context, logger *zerolog.Logger) error {
 				Availability: "offline",
 			})
 			if err != nil {
-				logger.Error().Err(err).Str("device", device.Mac).Msg("Failed to update availability")
+				logger.ErrorContext(ctx, "failed to update availability",
+					slog.String("device", device.Mac),
+					slog.Any("err", err))
 				return err
 			}
 			return nil
@@ -220,34 +228,35 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	const skipFrameCount = 0
-	logger := zerolog.New(os.Stdout).With().Timestamp().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + skipFrameCount).Logger()
+	logLevel := &slog.LevelVar{}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     logLevel,
+	}))
 
-	application, err := NewApp(&logger)
+	application, err := NewApp(logger)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to get a new App")
+		logger.ErrorContext(ctx, "failed to get a new App", slog.Any("err", err))
+		return
 	}
 
-	// Set new logger lever
 	switch application.logLevel {
 	case "error":
-		logger = logger.Level(zerolog.ErrorLevel)
+		logLevel.Set(slog.LevelError)
 	case "debug":
-		logger = logger.Level(zerolog.DebugLevel)
-	case "fatal":
-		logger = logger.Level(zerolog.FatalLevel)
+		logLevel.Set(slog.LevelDebug)
 	case "disabled":
-		logger = logger.Level(zerolog.Disabled)
+		logger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	case "info":
-		logger = logger.Level(zerolog.InfoLevel)
+		logLevel.Set(slog.LevelInfo)
 	default:
-		logger = logger.Level(zerolog.ErrorLevel)
+		logLevel.Set(slog.LevelError)
 	}
 
 	// Run
-	err = application.Run(ctx, &logger)
+	err = application.Run(ctx, logger)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to get a new App")
+		logger.ErrorContext(ctx, "failed to get a new App", slog.Any("err", err))
 		return
 	}
 }
