@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/rs/zerolog"
+	"log/slog"
 	"os"
 )
 
@@ -43,8 +43,8 @@ type (
 )
 
 // NewConfig returns app config.
-func NewConfig(logger *zerolog.Logger) (*Config, error) {
-	logger.Debug().Msg("Start reading a config file")
+func NewConfig(logger *slog.Logger) (*Config, error) {
+	logger.Info("Start reading a config file")
 
 	cfg := &Config{}
 
@@ -56,7 +56,7 @@ func NewConfig(logger *zerolog.Logger) (*Config, error) {
 		}
 	} else {
 		msg := "config file not found"
-		logger.Fatal().Msg(msg)
+		slog.Error(msg, slog.String("configFile", configFile))
 		return nil, errors.New(msg)
 	}
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
 	paho "github.com/eclipse/paho.mqtt.golang"
-	"github.com/rs/zerolog"
+	"log/slog"
 )
 
 type mqttPublisher struct {
@@ -21,7 +21,7 @@ func NewMqttSender(mqttConfig models.ConfigMqtt, client paho.Client) *mqttPublis
 	}
 }
 
-func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishClimateDiscoveryTopicInput) error {
+func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger *slog.Logger, input models.PublishClimateDiscoveryTopicInput) error {
 
 	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
@@ -29,7 +29,7 @@ func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger
 
 	payload, err := json.Marshal(input.Topic)
 	if err != nil {
-		logger.Error().Err(err).Interface("input", input.Topic).Msg("Failed to marshal discovery topic")
+		logger.ErrorContext(ctx, "Failed to marshal discovery topic", slog.Any("input", input.Topic), slog.Any("err", err))
 		return err
 	}
 
@@ -44,7 +44,7 @@ func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger
 	}
 }
 
-func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger *zerolog.Logger, input models.PublishSwitchDiscoveryTopicInput) error {
+func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger *slog.Logger, input models.PublishSwitchDiscoveryTopicInput) error {
 
 	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
@@ -52,7 +52,7 @@ func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger 
 
 	payload, err := json.Marshal(input.Topic)
 	if err != nil {
-		logger.Error().Err(err).Interface("input", input.Topic).Msg("Failed to marshal discovery topic")
+		logger.ErrorContext(ctx, "Failed to marshal discovery topic", slog.Any("input", input.Topic), slog.Any("err", err))
 		return err
 	}
 
@@ -67,7 +67,7 @@ func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger 
 	}
 }
 
-func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *zerolog.Logger, input *models.PublishAmbientTempInput) error {
+func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *slog.Logger, input *models.PublishAmbientTempInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/current_temp/value"
 
@@ -80,7 +80,7 @@ func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *zerolog.
 	}
 }
 
-func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *zerolog.Logger, input *models.PublishTemperatureInput) error {
+func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *slog.Logger, input *models.PublishTemperatureInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/temp/value"
 
@@ -93,7 +93,7 @@ func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *zerolog.
 	}
 }
 
-func (m *mqttPublisher) PublishMode(ctx context.Context, logger *zerolog.Logger, input *models.PublishModeInput) error {
+func (m *mqttPublisher) PublishMode(ctx context.Context, logger *slog.Logger, input *models.PublishModeInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/mode/value"
 
@@ -106,7 +106,7 @@ func (m *mqttPublisher) PublishMode(ctx context.Context, logger *zerolog.Logger,
 	}
 }
 
-func (m *mqttPublisher) PublishSwingMode(ctx context.Context, logger *zerolog.Logger, input *models.PublishSwingModeInput) error {
+func (m *mqttPublisher) PublishSwingMode(ctx context.Context, logger *slog.Logger, input *models.PublishSwingModeInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/swing_mode/value"
 
@@ -119,7 +119,7 @@ func (m *mqttPublisher) PublishSwingMode(ctx context.Context, logger *zerolog.Lo
 	}
 }
 
-func (m *mqttPublisher) PublishFanMode(ctx context.Context, logger *zerolog.Logger, input *models.PublishFanModeInput) error {
+func (m *mqttPublisher) PublishFanMode(ctx context.Context, logger *slog.Logger, input *models.PublishFanModeInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/fan_mode/value"
 
@@ -132,7 +132,7 @@ func (m *mqttPublisher) PublishFanMode(ctx context.Context, logger *zerolog.Logg
 	}
 }
 
-func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *zerolog.Logger, input *models.PublishAvailabilityInput) error {
+func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *slog.Logger, input *models.PublishAvailabilityInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/availability/value"
 
@@ -145,7 +145,7 @@ func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *zerolog
 	}
 }
 
-func (m *mqttPublisher) PublishDisplaySwitch(ctx context.Context, logger *zerolog.Logger, input *models.PublishDisplaySwitchInput) error {
+func (m *mqttPublisher) PublishDisplaySwitch(ctx context.Context, logger *slog.Logger, input *models.PublishDisplaySwitchInput) error {
 
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/display/switch/value"
 
