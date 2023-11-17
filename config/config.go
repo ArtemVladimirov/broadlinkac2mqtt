@@ -39,6 +39,9 @@ type (
 		Mac  string `env-required:"true" yaml:"mac"`
 		Name string `env-required:"true" yaml:"name"`
 		Port uint16 `env-required:"true" yaml:"port"`
+		// TemperatureUnit defines the temperature unit of the device, C or F.
+		// If this is not set, the temperature unit is Celsius.
+		TemperatureUnit string `env-default:"C"  yaml:"temperature_unit"`
 	}
 )
 

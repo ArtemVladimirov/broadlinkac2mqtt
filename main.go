@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt"
 	workspaceMqttModels "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
@@ -43,6 +42,7 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		return nil, err
 	}
 
+	// MQTT
 	mqttConfig := workspaceMqttModels.ConfigMqtt{
 		Broker:                   cfg.Mqtt.Broker,
 		User:                     cfg.Mqtt.User,
@@ -52,10 +52,6 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		AutoDiscoveryTopic:       cfg.Mqtt.AutoDiscoveryTopic,
 		AutoDiscoveryTopicRetain: cfg.Mqtt.AutoDiscoveryTopicRetain,
 	}
-
-	// Repository
-
-	cache := workspaceCache.NewCache()
 
 	opts, _ := mqtt.NewMqttConfig(logger, cfg.Mqtt)
 	client := paho.NewClient(opts)
@@ -72,7 +68,7 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		cfg.Service.UpdateInterval,
 		mqttSender,
 		workspaceWebClient.NewWebClient(),
-		cache,
+		workspaceCache.NewCache(),
 	)
 	//Configure MQTT Receiver Layer
 	mqttReceiver := workspaceMqttReceiver.NewMqttReceiver(
@@ -83,18 +79,21 @@ func NewApp(logger *slog.Logger) (*App, error) {
 	var devices []workspaceServiceModels.DeviceConfig
 	for _, device := range cfg.Devices {
 
-		if len(device.Mac) != 12 {
-			msg := "mac address is wrong"
-			logger.Error("mac is incorrect", slog.String("device", device.Mac))
-			return nil, errors.New(msg)
+		device := workspaceServiceModels.DeviceConfig{
+			Ip:              device.Ip,
+			Mac:             strings.ToLower(device.Mac),
+			Name:            device.Name,
+			Port:            device.Port,
+			TemperatureUnit: device.TemperatureUnit,
 		}
 
-		devices = append(devices, workspaceServiceModels.DeviceConfig{
-			Ip:   device.Ip,
-			Mac:  strings.ToLower(device.Mac),
-			Name: device.Name,
-			Port: device.Port,
-		})
+		err = device.Validate()
+		if err != nil {
+			logger.Error("mac is incorrect", slog.String("device", device.Mac))
+			return nil, err
+		}
+
+		devices = append(devices, device)
 	}
 
 	application := &App{

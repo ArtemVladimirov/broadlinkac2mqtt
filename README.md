@@ -44,6 +44,9 @@ Example of config.yml
         mac: 34ea346b0mks   # Only this format is supported
         name: Bedroom AC
         port: 80 
+        # Temperature Unit defines the temperature unit of the device, C or F.
+        # If this is not set, the temperature unit is Celsius.
+        temperature_unit: C
 
 ```
 
