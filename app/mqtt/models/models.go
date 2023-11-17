@@ -37,6 +37,7 @@ type ClimateDiscoveryTopic struct {
 	MinTemp                 float32                    `json:"min_temp" example:"16.0"`
 	Availability            DiscoveryTopicAvailability `json:"availability"`
 	Icon                    string                     `json:"icon"`
+	TemperatureUnit         string                     `json:"temperature_unit"` // C or F
 }
 
 type SwitchDiscoveryTopic struct {

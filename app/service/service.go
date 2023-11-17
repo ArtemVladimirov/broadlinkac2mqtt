@@ -10,6 +10,7 @@ import (
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	models_web "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/pkg/coder"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/pkg/converter"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"math/rand"
@@ -298,10 +299,24 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 		slog.String("device", input.Mac))
 
 	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != ambientTemp {
+
+		readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+			Mac: input.Mac,
+		}
+
+		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+		if err != nil {
+			logger.ErrorContext(ctx, "failed to read device config",
+				slog.Any("err", err),
+				slog.String("device", input.Mac),
+				slog.Any("input", readDeviceConfigInput))
+			return err
+		}
+
 		// Sent  temperature to MQTT
 		publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
 			Mac:         input.Mac,
-			Temperature: ambientTemp,
+			Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, ambientTemp),
 		}
 
 		err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
@@ -468,9 +483,22 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 		if readDeviceStatusRawReturn == nil ||
 			readDeviceStatusRawReturn.Status.Temperature != raw.Temperature {
 
+			readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+				Mac: input.Mac,
+			}
+
+			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+			if err != nil {
+				logger.ErrorContext(ctx, "failed to read device config",
+					slog.Any("err", err),
+					slog.String("device", input.Mac),
+					slog.Any("input", readDeviceConfigInput))
+				return err
+			}
+
 			publishTemperatureInput := &models_mqtt.PublishTemperatureInput{
 				Mac:         input.Mac,
-				Temperature: deviceStatusHass.Temperature,
+				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, deviceStatusHass.Temperature),
 			}
 
 			err = s.mqtt.PublishTemperature(ctx, logger, publishTemperatureInput)
@@ -702,7 +730,7 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 
 	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to encrypt payload",
+		logger.ErrorContext(ctx, "failed to read device config",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", readDeviceConfigInput))
@@ -774,6 +802,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *slog.Logger
 			CurrentTemperatureTopic: prefix + "/current_temp/value",
 			Name:                    nil,
 			Icon:                    "mdi:air-conditioner",
+			TemperatureUnit:         input.Device.TemperatureUnit,
 		},
 	}
 	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, logger, publishClimateDiscoveryTopicInput)
@@ -935,7 +964,22 @@ func (s *service) UpdateSwingMode(ctx context.Context, logger *slog.Logger, inpu
 
 func (s *service) UpdateTemperature(ctx context.Context, logger *slog.Logger, input *models.UpdateTemperatureInput) error {
 
-	err := input.Validate()
+	readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+		Mac: input.Mac,
+	}
+
+	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to read device config",
+			slog.Any("err", err),
+			slog.String("device", input.Mac),
+			slog.Any("input", readDeviceConfigInput))
+		return err
+	}
+
+	input.Temperature = converter.Temperature(readDeviceConfigReturn.Config.TemperatureUnit, models.Celsius, input.Temperature)
+
+	err = input.Validate()
 	if err != nil {
 		logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
@@ -1237,6 +1281,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 			return nil
 		default:
 			if time.Now().Sub(lastGetAmbientTemp).Seconds() > 180 {
+
 				err := s.GetDeviceAmbientTemperature(ctx, logger, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
 				if err != nil {
 					logger.ErrorContext(ctx, "failed to get ambient temperature",
@@ -1247,6 +1292,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 					continue
 				}
 				lastGetAmbientTemp = time.Now()
+
 			} else {
 				var (
 					forcedUpdateDeviceState  = false
@@ -1499,7 +1545,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 			// Send  temperature to MQTT
 			publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
 				Mac:         mac,
-				Temperature: readAmbientTempReturn.Temperature,
+				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readAmbientTempReturn.Temperature),
 			}
 
 			err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
@@ -1517,7 +1563,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 
 			publishTemperatureInput := &models_mqtt.PublishTemperatureInput{
 				Mac:         mac,
-				Temperature: readDeviceStatusRawReturn.Status.Temperature,
+				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readDeviceStatusRawReturn.Status.Temperature),
 			}
 
 			err = s.mqtt.PublishTemperature(ctx, logger, publishTemperatureInput)

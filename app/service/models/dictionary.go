@@ -6,6 +6,9 @@ const (
 
 	StatusOnline  = "online"
 	StatusOffline = "offline"
+
+	Fahrenheit = "F"
+	Celsius    = "C"
 )
 
 var (

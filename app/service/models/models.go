@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+	"strings"
 	"time"
 )
 
@@ -10,10 +12,23 @@ type Device struct {
 }
 
 type DeviceConfig struct {
-	Mac  string
-	Ip   string
-	Name string
-	Port uint16
+	Mac             string
+	Ip              string
+	Name            string
+	Port            uint16
+	TemperatureUnit string
+}
+
+func (input DeviceConfig) Validate() error {
+	if len(input.Mac) != 12 {
+		return errors.New("mac address is wrong")
+	}
+
+	if strings.ToUpper(input.TemperatureUnit) != Celsius && strings.ToUpper(input.TemperatureUnit) != Fahrenheit {
+		return errors.New("unknown temperature unit")
+	}
+
+	return nil
 }
 
 type DeviceAuth struct {
