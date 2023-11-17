@@ -7,13 +7,13 @@ func Temperature(inputUnit, outputUnit string, value float32) float32 {
 		}
 
 		if outputUnit == "F" {
-			return (value * 9 / 5) + 32
+			return float32(int((value * 9 / 5) + 32))
 		}
 	}
 
 	if inputUnit == "F" {
 		if outputUnit == "C" {
-			return (value - 32) * 5 / 9
+			return float32(int((value-32)*5/9*10)) / 10
 		}
 
 		if outputUnit == "F" {
