@@ -24,3 +24,6 @@ devices:
     mac: 34ea345b0fd4
     name: MH Childroom AC
     port: 80
+    # Temperature Unit defines the temperature unit of the device, C or F.
+    # If this is not set, the temperature unit is Celsius.
+    temperature_unit: C
