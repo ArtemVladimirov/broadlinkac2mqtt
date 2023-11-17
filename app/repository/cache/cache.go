@@ -9,13 +9,13 @@ import (
 
 type cache struct {
 	devices map[string]models.Device
-	mutex   *sync.Mutex
+	mutex   *sync.RWMutex
 }
 
 func NewCache() *cache {
 	return &cache{
 		devices: make(map[string]models.Device),
-		mutex:   new(sync.Mutex),
+		mutex:   new(sync.RWMutex),
 	}
 }
 
@@ -33,13 +33,12 @@ func (c *cache) UpsertDeviceConfig(ctx context.Context, logger *slog.Logger, inp
 
 func (c *cache) ReadDeviceConfig(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceConfigInput) (*models.ReadDeviceConfigReturn, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceNotFound
 	}
 
@@ -53,8 +52,7 @@ func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *slog.Logger, input
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -65,19 +63,17 @@ func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *slog.Logger, input
 
 func (c *cache) ReadDeviceAuth(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceAuthInput) (*models.ReadDeviceAuthReturn, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceNotFound
 	}
 
 	if device.Auth == nil {
-		message := "device not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceAuthNotFound
 	}
 
@@ -91,8 +87,7 @@ func (c *cache) UpsertAmbientTemp(ctx context.Context, logger *slog.Logger, inpu
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -104,8 +99,8 @@ func (c *cache) UpsertAmbientTemp(ctx context.Context, logger *slog.Logger, inpu
 
 func (c *cache) ReadAmbientTemp(ctx context.Context, logger *slog.Logger, input *models.ReadAmbientTempInput) (*models.ReadAmbientTempReturn, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
@@ -115,8 +110,7 @@ func (c *cache) ReadAmbientTemp(ctx context.Context, logger *slog.Logger, input 
 	}
 
 	if device.DeviceStatus.AmbientTemp == nil {
-		message := "device status ambient temp is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device status ambient temp is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceStatusAmbientTempNotFound
 	}
 
@@ -130,8 +124,7 @@ func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *slog.Logger, 
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -143,8 +136,8 @@ func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *slog.Logger, 
 
 func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceStatusRawInput) (*models.ReadDeviceStatusRawReturn, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
@@ -154,8 +147,7 @@ func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *slog.Logger, in
 	}
 
 	if device.DeviceStatusRaw == nil {
-		message := "device status raw is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device status raw is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceStatusRawNotFound
 	}
 
@@ -169,8 +161,7 @@ func (c *cache) UpsertMqttModeMessage(ctx context.Context, logger *slog.Logger, 
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -187,8 +178,7 @@ func (c *cache) UpsertMqttSwingModeMessage(ctx context.Context, logger *slog.Log
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -203,8 +193,7 @@ func (c *cache) UpsertMqttFanModeMessage(ctx context.Context, logger *slog.Logge
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -220,8 +209,7 @@ func (c *cache) UpsertMqttTemperatureMessage(ctx context.Context, logger *slog.L
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -234,13 +222,12 @@ func (c *cache) ReadMqttMessage(ctx context.Context, logger *slog.Logger, input 
 
 	var state models.ReadMqttMessageReturn
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceNotFound
 	}
 
@@ -260,8 +247,7 @@ func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *slog.Logge
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -273,8 +259,8 @@ func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *slog.Logge
 
 func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceAvailabilityInput) (*models.ReadDeviceAvailabilityReturn, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
@@ -284,8 +270,7 @@ func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *slog.Logger,
 	}
 
 	if device.DeviceStatus.Availability == nil {
-		message := "device status ambient temp is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device status ambient temp is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceStatusAvailabilityNotFound
 	}
 
@@ -295,8 +280,8 @@ func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *slog.Logger,
 func (c *cache) ReadAuthedDevices(ctx context.Context, logger *slog.Logger) (*models.ReadAuthedDevicesReturn, error) {
 	var macs []string
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	for mac := range c.devices {
 		macs = append(macs, mac)
@@ -312,8 +297,7 @@ func (c *cache) UpsertMqttDisplaySwitchMessage(ctx context.Context, logger *slog
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		message := "device is not found in cache"
-		logger.ErrorContext(ctx, message, slog.Any("input", input))
+		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
