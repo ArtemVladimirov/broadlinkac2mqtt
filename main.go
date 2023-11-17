@@ -90,6 +90,7 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		err = device.Validate()
 		if err != nil {
 			logger.Error("mac is incorrect", slog.String("device", device.Mac))
+			return nil, err
 		}
 
 		devices = append(devices, device)
