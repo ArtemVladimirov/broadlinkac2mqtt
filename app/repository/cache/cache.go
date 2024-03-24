@@ -2,9 +2,10 @@ package cache
 
 import (
 	"context"
-	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 	"log/slog"
 	"sync"
+
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 )
 
 type cache struct {
@@ -20,19 +21,16 @@ func NewCache() *cache {
 }
 
 func (c *cache) UpsertDeviceConfig(ctx context.Context, logger *slog.Logger, input *models.UpsertDeviceConfigInput) error {
-	var device models.Device
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	device = c.devices[input.Config.Mac]
+	device := c.devices[input.Config.Mac]
 	device.Config = input.Config
 	c.devices[input.Config.Mac] = device
 	return nil
 }
 
 func (c *cache) ReadDeviceConfig(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceConfigInput) (*models.ReadDeviceConfigReturn, error) {
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -46,7 +44,6 @@ func (c *cache) ReadDeviceConfig(ctx context.Context, logger *slog.Logger, input
 }
 
 func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *slog.Logger, input *models.UpsertDeviceAuthInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -62,7 +59,6 @@ func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *slog.Logger, input
 }
 
 func (c *cache) ReadDeviceAuth(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceAuthInput) (*models.ReadDeviceAuthReturn, error) {
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -81,7 +77,6 @@ func (c *cache) ReadDeviceAuth(ctx context.Context, logger *slog.Logger, input *
 }
 
 func (c *cache) UpsertAmbientTemp(ctx context.Context, logger *slog.Logger, input *models.UpsertAmbientTempInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -93,12 +88,10 @@ func (c *cache) UpsertAmbientTemp(ctx context.Context, logger *slog.Logger, inpu
 
 	device.DeviceStatus.AmbientTemp = &input.Temperature
 	c.devices[input.Mac] = device
-
 	return nil
 }
 
 func (c *cache) ReadAmbientTemp(ctx context.Context, logger *slog.Logger, input *models.ReadAmbientTempInput) (*models.ReadAmbientTempReturn, error) {
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -118,7 +111,6 @@ func (c *cache) ReadAmbientTemp(ctx context.Context, logger *slog.Logger, input 
 }
 
 func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *slog.Logger, input *models.UpsertDeviceStatusRawInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -130,12 +122,10 @@ func (c *cache) UpsertDeviceStatusRaw(ctx context.Context, logger *slog.Logger, 
 
 	device.DeviceStatusRaw = &input.Status
 	c.devices[input.Mac] = device
-
 	return nil
 }
 
 func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceStatusRawInput) (*models.ReadDeviceStatusRawReturn, error) {
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -155,7 +145,6 @@ func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *slog.Logger, in
 }
 
 func (c *cache) UpsertMqttModeMessage(ctx context.Context, logger *slog.Logger, input *models.UpsertMqttModeMessageInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -167,12 +156,10 @@ func (c *cache) UpsertMqttModeMessage(ctx context.Context, logger *slog.Logger, 
 
 	device.MqttLastMessage.Mode = &input.Mode
 	c.devices[input.Mac] = device
-
 	return nil
 }
 
 func (c *cache) UpsertMqttSwingModeMessage(ctx context.Context, logger *slog.Logger, input *models.UpsertMqttSwingModeMessageInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -203,7 +190,6 @@ func (c *cache) UpsertMqttFanModeMessage(ctx context.Context, logger *slog.Logge
 }
 
 func (c *cache) UpsertMqttTemperatureMessage(ctx context.Context, logger *slog.Logger, input *models.UpsertMqttTemperatureMessageInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -219,9 +205,6 @@ func (c *cache) UpsertMqttTemperatureMessage(ctx context.Context, logger *slog.L
 }
 
 func (c *cache) ReadMqttMessage(ctx context.Context, logger *slog.Logger, input *models.ReadMqttMessageInput) (*models.ReadMqttMessageReturn, error) {
-
-	var state models.ReadMqttMessageReturn
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -231,17 +214,16 @@ func (c *cache) ReadMqttMessage(ctx context.Context, logger *slog.Logger, input 
 		return nil, models.ErrorDeviceNotFound
 	}
 
-	state.Temperature = device.MqttLastMessage.Temperature
-	state.Mode = device.MqttLastMessage.Mode
-	state.SwingMode = device.MqttLastMessage.SwingMode
-	state.FanMode = device.MqttLastMessage.FanMode
-	state.IsDisplayOn = device.MqttLastMessage.DisplaySwitch
-
-	return &state, nil
+	return &models.ReadMqttMessageReturn{
+		Temperature: device.MqttLastMessage.Temperature,
+		SwingMode:   device.MqttLastMessage.SwingMode,
+		FanMode:     device.MqttLastMessage.FanMode,
+		Mode:        device.MqttLastMessage.Mode,
+		IsDisplayOn: device.MqttLastMessage.DisplaySwitch,
+	}, nil
 }
 
 func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *slog.Logger, input *models.UpsertDeviceAvailabilityInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -258,7 +240,6 @@ func (c *cache) UpsertDeviceAvailability(ctx context.Context, logger *slog.Logge
 }
 
 func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *slog.Logger, input *models.ReadDeviceAvailabilityInput) (*models.ReadDeviceAvailabilityReturn, error) {
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -278,11 +259,10 @@ func (c *cache) ReadDeviceAvailability(ctx context.Context, logger *slog.Logger,
 }
 
 func (c *cache) ReadAuthedDevices(ctx context.Context, logger *slog.Logger) (*models.ReadAuthedDevicesReturn, error) {
-	var macs []string
-
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
+	macs := make([]string, 0, len(c.devices))
 	for mac := range c.devices {
 		macs = append(macs, mac)
 	}
@@ -291,7 +271,6 @@ func (c *cache) ReadAuthedDevices(ctx context.Context, logger *slog.Logger) (*mo
 }
 
 func (c *cache) UpsertMqttDisplaySwitchMessage(ctx context.Context, logger *slog.Logger, input *models.UpsertMqttDisplaySwitchMessageInput) error {
-
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -303,6 +282,5 @@ func (c *cache) UpsertMqttDisplaySwitchMessage(ctx context.Context, logger *slog
 
 	device.MqttLastMessage.DisplaySwitch = &input.DisplaySwitch
 	c.devices[input.Mac] = device
-
 	return nil
 }

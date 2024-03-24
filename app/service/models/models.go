@@ -66,7 +66,6 @@ type DeviceStatusRaw struct {
 }
 
 func (raw DeviceStatusRaw) ConvertToDeviceStatusHass() (mqttStatus DeviceStatusHass) {
-
 	var deviceStatusMqtt DeviceStatusHass
 
 	// Temperature
@@ -158,7 +157,6 @@ type UpdateFanModeInput struct {
 }
 
 func (input UpdateFanModeInput) Validate() error {
-
 	var fanModes = []string{"auto", "low", "medium", "high", "turbo", "mute"}
 
 	for _, fanMode := range fanModes {
@@ -176,7 +174,6 @@ type UpdateModeInput struct {
 }
 
 func (input UpdateModeInput) Validate() error {
-
 	var modes = []string{"auto", "off", "cool", "heat", "dry", "fan_only"}
 
 	for _, mode := range modes {
@@ -194,7 +191,6 @@ type UpdateSwingModeInput struct {
 }
 
 func (input UpdateSwingModeInput) Validate() error {
-
 	_, ok := VerticalFixationStatusesInvert[input.SwingMode]
 	if !ok {
 		return ErrorInvalidParameterSwingMode
@@ -213,7 +209,6 @@ func (input UpdateTemperatureInput) Validate() error {
 	if input.Temperature > 32 || input.Temperature < 16 {
 		return ErrorInvalidParameterTemperature
 	}
-
 	return nil
 }
 

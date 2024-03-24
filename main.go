@@ -35,7 +35,6 @@ type App struct {
 }
 
 func NewApp(logger *slog.Logger) (*App, error) {
-
 	// Configuration
 	cfg, err := config.NewConfig(logger)
 	if err != nil {
@@ -110,7 +109,6 @@ func NewApp(logger *slog.Logger) (*App, error) {
 }
 
 func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
-
 	// Run MQTT
 	if token := app.client.Connect(); token.Wait() && token.Error() != nil {
 		err := token.Error()

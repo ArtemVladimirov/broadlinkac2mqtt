@@ -2,12 +2,13 @@ package app
 
 import (
 	"context"
+	"log/slog"
+
 	models_mqtt "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
 	models_cache "github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	models_web "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"log/slog"
 )
 
 type MqttSubscriber interface {

@@ -22,5 +22,4 @@ func Temperature(inputUnit, outputUnit string, value float32) float32 {
 	}
 
 	return 0
-
 }

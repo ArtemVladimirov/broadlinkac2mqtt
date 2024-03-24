@@ -22,7 +22,6 @@ func NewMqttSender(mqttConfig models.ConfigMqtt, client paho.Client) *mqttPublis
 }
 
 func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger *slog.Logger, input models.PublishClimateDiscoveryTopicInput) error {
-
 	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
 	}
@@ -45,7 +44,6 @@ func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, logger
 }
 
 func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger *slog.Logger, input models.PublishSwitchDiscoveryTopicInput) error {
-
 	if m.mqttConfig.AutoDiscoveryTopic == nil {
 		return nil
 	}
@@ -68,7 +66,6 @@ func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, logger 
 }
 
 func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *slog.Logger, input *models.PublishAmbientTempInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/current_temp/value"
 
 	token := m.client.Publish(topic, 0, false, fmt.Sprintf("%.1f", input.Temperature))
@@ -81,7 +78,6 @@ func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, logger *slog.Log
 }
 
 func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *slog.Logger, input *models.PublishTemperatureInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/temp/value"
 
 	token := m.client.Publish(topic, 0, false, fmt.Sprintf("%.1f", input.Temperature))
@@ -94,7 +90,6 @@ func (m *mqttPublisher) PublishTemperature(ctx context.Context, logger *slog.Log
 }
 
 func (m *mqttPublisher) PublishMode(ctx context.Context, logger *slog.Logger, input *models.PublishModeInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/mode/value"
 
 	token := m.client.Publish(topic, 0, false, input.Mode)
@@ -107,7 +102,6 @@ func (m *mqttPublisher) PublishMode(ctx context.Context, logger *slog.Logger, in
 }
 
 func (m *mqttPublisher) PublishSwingMode(ctx context.Context, logger *slog.Logger, input *models.PublishSwingModeInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/swing_mode/value"
 
 	token := m.client.Publish(topic, 0, false, input.SwingMode)
@@ -120,7 +114,6 @@ func (m *mqttPublisher) PublishSwingMode(ctx context.Context, logger *slog.Logge
 }
 
 func (m *mqttPublisher) PublishFanMode(ctx context.Context, logger *slog.Logger, input *models.PublishFanModeInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/fan_mode/value"
 
 	token := m.client.Publish(topic, 0, false, input.FanMode)
@@ -133,7 +126,6 @@ func (m *mqttPublisher) PublishFanMode(ctx context.Context, logger *slog.Logger,
 }
 
 func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *slog.Logger, input *models.PublishAvailabilityInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/availability/value"
 
 	token := m.client.Publish(topic, 0, false, input.Availability)
@@ -146,7 +138,6 @@ func (m *mqttPublisher) PublishAvailability(ctx context.Context, logger *slog.Lo
 }
 
 func (m *mqttPublisher) PublishDisplaySwitch(ctx context.Context, logger *slog.Logger, input *models.PublishDisplaySwitchInput) error {
-
 	topic := m.mqttConfig.TopicPrefix + "/" + input.Mac + "/display/switch/value"
 
 	token := m.client.Publish(topic, 0, false, input.Status)

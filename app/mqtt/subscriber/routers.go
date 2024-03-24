@@ -8,7 +8,6 @@ import (
 )
 
 func Routers(ctx context.Context, logger *slog.Logger, mac string, topicPrefix string, client mqtt.Client, handler app.MqttSubscriber) {
-
 	prefix := topicPrefix + "/" + mac
 
 	if token := client.Subscribe(prefix+"/fan_mode/set", 0, handler.UpdateFanModeCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
@@ -26,5 +25,4 @@ func Routers(ctx context.Context, logger *slog.Logger, mac string, topicPrefix s
 	if token := client.Subscribe(prefix+"/display/switch/set", 0, handler.UpdateDisplaySwitchCommandTopic(ctx, logger)); token.Wait() && token.Error() != nil {
 		logger.ErrorContext(ctx, "failed to subscribe on topic", slog.Any("err", token.Error()))
 	}
-
 }

@@ -2,11 +2,12 @@ package webClient
 
 import (
 	"context"
-	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	"log/slog"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 )
 
 type webClient struct {
@@ -17,7 +18,6 @@ func NewWebClient() *webClient {
 }
 
 func (w *webClient) SendCommand(ctx context.Context, logger *slog.Logger, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
-
 	conn, err := net.Dial("udp", input.Ip+":"+strconv.Itoa(int(input.Port)))
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to dial address", slog.Any("err", err))
