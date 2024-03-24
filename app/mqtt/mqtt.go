@@ -4,16 +4,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
-	paho "github.com/eclipse/paho.mqtt.golang"
 	"log/slog"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
+	paho "github.com/eclipse/paho.mqtt.golang"
 )
 
 func NewMqttConfig(logger *slog.Logger, cfg config.Mqtt) (*paho.ClientOptions, error) {
-
 	//Configure MQTT Client
 	uri, err := url.Parse(cfg.Broker)
 	if err != nil {

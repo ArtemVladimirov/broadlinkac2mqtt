@@ -1,8 +1,9 @@
 package models
 
 import (
-	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	"time"
+
+	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 )
 
 type Device struct {

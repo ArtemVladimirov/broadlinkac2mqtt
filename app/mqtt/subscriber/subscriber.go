@@ -25,7 +25,6 @@ func NewMqttReceiver(service app.Service, mqttConfig models.ConfigMqtt) *mqttSub
 
 func (m *mqttSubscriber) UpdateFanModeCommandTopic(ctx context.Context, logger *slog.Logger) mqtt.MessageHandler {
 	return func(c mqtt.Client, msg mqtt.Message) {
-
 		mac := strings.TrimPrefix(strings.TrimSuffix(msg.Topic(), "/fan_mode/set"), m.mqttConfig.TopicPrefix+"/")
 
 		logger.DebugContext(ctx, "new update fan mode message",
@@ -120,7 +119,6 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(ctx context.Context, logg
 
 func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(ctx context.Context, logger *slog.Logger) mqtt.MessageHandler {
 	return func(c mqtt.Client, msg mqtt.Message) {
-
 		logger.DebugContext(ctx, "new home assistant LWT message",
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
