@@ -1,29 +1,21 @@
 service:
-  update_interval: 10 #Seconds
+  update_interval: 10
   log_level: error
-
 mqtt:
-  ## Use mqtts for SSL support
-  broker: "mqtt://192.168.1.10:1883"
+  broker: mqtt://192.168.1.10:1883
   user: admin
   password: password
-  client_id: aircac2
-  topic_prefix: aircon2
+  client_id: aircon
+  topic_prefix: aircon
   auto_discovery_topic: homeassistant
   auto_discovery_topic_retain: false
-  ## CA certificate in CRT format.
-  # certificate_authority: "./config/cert/ca.crt"
-  ## Don’t verify if the common name in the server certificate matches the value of broker
-  # skip_cert_cn_check: true
-  ## Authorization using client certificates
-  # certificate_client: "./config/cert/client.crt"
-  # key-client: "./config/cert/client.key"
-
+  certificate_authority: ca.crt
+  skip_cert_cn_check: true
+  certificate_client: client.crt
+  key-client: client.key
 devices:
-  - ip: 192.168.1.12
-    mac: 34ea345b0fd4
-    name: MH Childroom AC
+  - ip: 192.168.68.51
+    mac: a043b0df6562
+    name: Living Room Air Con
     port: 80
-    # Temperature Unit defines the temperature unit of the device, C or F.
-    # If this is not set, the temperature unit is Celsius.
     temperature_unit: C

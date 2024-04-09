@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"strings"
 	"time"
 )
 
@@ -24,7 +23,7 @@ func (input DeviceConfig) Validate() error {
 		return errors.New("mac address is wrong")
 	}
 
-	if strings.ToUpper(input.TemperatureUnit) != Celsius && strings.ToUpper(input.TemperatureUnit) != Fahrenheit {
+	if input.TemperatureUnit != Celsius && input.TemperatureUnit != Fahrenheit {
 		return errors.New("unknown temperature unit")
 	}
 
