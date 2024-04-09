@@ -75,9 +75,8 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		mqttConfig,
 	)
 
-	var devices []workspaceServiceModels.DeviceConfig
+	devices := make([]workspaceServiceModels.DeviceConfig, 0, len(cfg.Devices))
 	for _, device := range cfg.Devices {
-
 		device := workspaceServiceModels.DeviceConfig{
 			Ip:              device.Ip,
 			Mac:             strings.ToLower(device.Mac),
