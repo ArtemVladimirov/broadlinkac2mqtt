@@ -1,0 +1,23 @@
+{
+  "service": {
+    "update_interval": 10,
+    "log_level": "error"
+  },
+  "mqtt": {
+    "broker": "mqtt://192.168.1.10:1883",
+    "user": "admin",
+    "password": "password",
+    "client_id": "aircac2",
+    "topic_prefix": "aircon2",
+    "auto_discovery_topic": "homeassistant",
+    "auto_discovery_topic_retain": false
+  },
+  "devices": [
+    {
+      "ip": "192.168.1.12",
+      "mac": "34ea345b0fd4",
+      "name": "MH Childroom AC",
+      "port": 80
+    }
+  ]
+}

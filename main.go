@@ -77,21 +77,25 @@ func NewApp(logger *slog.Logger) (*App, error) {
 
 	devices := make([]workspaceServiceModels.DeviceConfig, 0, len(cfg.Devices))
 	for _, device := range cfg.Devices {
-		device := workspaceServiceModels.DeviceConfig{
+		if len(device.TemperatureUnit) == 0 {
+			device.TemperatureUnit = "C"
+		}
+
+		dev := workspaceServiceModels.DeviceConfig{
 			Ip:              device.Ip,
 			Mac:             strings.ToLower(device.Mac),
 			Name:            device.Name,
 			Port:            device.Port,
-			TemperatureUnit: device.TemperatureUnit,
+			TemperatureUnit: strings.ToUpper(device.TemperatureUnit),
 		}
 
-		err = device.Validate()
+		err = dev.Validate()
 		if err != nil {
-			logger.Error("mac is incorrect", slog.String("device", device.Mac))
+			logger.Error("device config is incorrect", slog.String("device", device.Mac), slog.Any("err", err))
 			return nil, err
 		}
 
-		devices = append(devices, device)
+		devices = append(devices, dev)
 	}
 
 	application := &App{
