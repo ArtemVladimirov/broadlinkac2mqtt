@@ -49,7 +49,6 @@ func (c *cache) UpsertDeviceAuth(ctx context.Context, logger *slog.Logger, input
 
 	device, ok := c.devices[input.Mac]
 	if !ok {
-		logger.ErrorContext(ctx, "device is not found in cache", slog.Any("input", input))
 		return models.ErrorDeviceNotFound
 	}
 
@@ -69,7 +68,6 @@ func (c *cache) ReadDeviceAuth(ctx context.Context, logger *slog.Logger, input *
 	}
 
 	if device.Auth == nil {
-		logger.ErrorContext(ctx, "device not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceAuthNotFound
 	}
 
@@ -103,7 +101,6 @@ func (c *cache) ReadAmbientTemp(ctx context.Context, logger *slog.Logger, input 
 	}
 
 	if device.DeviceStatus.AmbientTemp == nil {
-		logger.ErrorContext(ctx, "device status ambient temp is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceStatusAmbientTempNotFound
 	}
 
@@ -137,7 +134,6 @@ func (c *cache) ReadDeviceStatusRaw(ctx context.Context, logger *slog.Logger, in
 	}
 
 	if device.DeviceStatusRaw == nil {
-		logger.ErrorContext(ctx, "device status raw is not found in cache", slog.Any("input", input))
 		return nil, models.ErrorDeviceStatusRawNotFound
 	}
 

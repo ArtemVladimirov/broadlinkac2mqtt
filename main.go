@@ -138,10 +138,11 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 	for _, device := range app.devices {
 		err := app.wsService.CreateDevice(ctx, logger, &workspaceServiceModels.CreateDeviceInput{
 			Config: workspaceServiceModels.DeviceConfig{
-				Mac:  device.Mac,
-				Ip:   device.Ip,
-				Name: device.Name,
-				Port: device.Port,
+				Mac:             device.Mac,
+				Ip:              device.Ip,
+				Name:            device.Name,
+				Port:            device.Port,
+				TemperatureUnit: device.TemperatureUnit,
 			}})
 		if err != nil {
 			logger.ErrorContext(ctx, "failed to create the device",

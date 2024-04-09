@@ -733,7 +733,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *slog.Logger
 	device := models_mqtt.DiscoveryTopicDevice{
 		Model: "AirCon",
 		Mf:    "broadlink",
-		Sw:    "v1.5.2",
+		Sw:    "v1.5.3",
 		Ids:   input.Device.Mac,
 		Name:  input.Device.Name,
 	}
