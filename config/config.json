@@ -17,7 +17,8 @@
       "ip": "192.168.1.12",
       "mac": "34ea345b0fd4",
       "name": "MH Childroom AC",
-      "port": 80
+      "port": 80,
+      "temperature_unit": "C"
     }
   ]
 }
