@@ -13,7 +13,7 @@ Control your broadlink-based air conditioner using Home Assistant
 
 ## Configuration
 
-You must specify the mqtt and air conditioner settings in the config.yml file in the config folder.
+You must specify the mqtt and air conditioner settings in the config.yml or config.json (less priority) file in the config folder.
 
 Example of config.yml 
 
