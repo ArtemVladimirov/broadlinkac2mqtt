@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"log/slog"
 	"math/rand"
@@ -158,7 +157,12 @@ func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *mo
 		return err
 	}
 	auth := readDeviceAuthReturn.Auth
-	response.Payload, _ = coder.Decrypt(auth.Key, auth.Iv, response.Payload)
+
+	response.Payload, err = coder.Decrypt(auth.Key, auth.Iv, response.Payload)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to decode response", slog.Any("err", err), slog.Any("input", input))
+		return err
+	}
 
 	auth = models.DeviceAuth{
 		LastMessageId: auth.LastMessageId,
@@ -209,15 +213,9 @@ GetDeviceAmbientTemperature
 0090   5e 60
 */
 func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.Logger, input *models.GetDeviceAmbientTemperatureInput) error {
-	payload, err := hex.DecodeString("0C00BB0006800000020021011B7E0000")
-	if err != nil {
-		logger.ErrorContext(ctx, "failed to decode string", slog.Any("err", err))
-		return err
-	}
-
 	sendCommandInput := &models.SendCommandInput{
 		Command: 0x6a,
-		Payload: payload,
+		Payload: []byte{12, 0, 187, 0, 6, 128, 0, 0, 2, 0, 33, 1, 27, 126, 0, 0},
 		Mac:     input.Mac,
 	}
 	response, err := s.SendCommand(ctx, logger, sendCommandInput)
@@ -251,7 +249,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 
 	response.Payload, err = coder.Decrypt(readDeviceAuthReturn.Auth.Key, readDeviceAuthReturn.Auth.Iv, response.Payload)
 	if err != nil {
-		logger.ErrorContext(ctx, "device not found", slog.Any("err", err), slog.Any("input", response.Payload))
+		logger.ErrorContext(ctx, "failed to decrypt response", slog.Any("err", err), slog.Any("input", response.Payload))
 		return err
 	}
 
@@ -332,15 +330,9 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 
 // GetDeviceStates returns devices states
 func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, input *models.GetDeviceStatesInput) error {
-	payload, err := hex.DecodeString("0C00BB0006800000020011012B7E0000")
-	if err != nil {
-		logger.ErrorContext(ctx, "failed to decode string", slog.Any("err", err))
-		return err
-	}
-
 	sendCommandInput := &models.SendCommandInput{
 		Command: 0x6a,
-		Payload: payload,
+		Payload: []byte{12, 0, 187, 0, 6, 128, 0, 0, 2, 0, 17, 1, 43, 126, 0, 0},
 		Mac:     input.Mac,
 	}
 
@@ -617,12 +609,11 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 
 	auth.LastMessageId = (auth.LastMessageId + 1) & 0xffff
 
-	var macByteSlice []byte
-
+	macByteSlice := make([]byte, 0, len(input.Mac)/2)
 	for i := 0; i < len(input.Mac); i = i + 2 {
 		val, err := strconv.ParseUint(input.Mac[i:i+2], 16, 8)
 		if err != nil {
-			logger.ErrorContext(ctx, "Mac address is not correct",
+			logger.ErrorContext(ctx, "mac address is not correct",
 				slog.Any("err", err),
 				slog.Any("input", input.Mac))
 			return nil, err
@@ -991,16 +982,11 @@ func (s *service) UpdateDisplaySwitch(ctx context.Context, logger *slog.Logger, 
 		return err
 	}
 
-	isDisplayOn := false
-	if input.Status == "ON" {
-		isDisplayOn = true
-	}
-
 	upsertDisplaySwitchMessageInput := &models_repo.UpsertMqttDisplaySwitchMessageInput{
 		Mac: input.Mac,
 		DisplaySwitch: models_repo.MqttDisplaySwitchMessage{
 			UpdatedAt:   time.Now(),
-			IsDisplayOn: isDisplayOn,
+			IsDisplayOn: input.Status == "ON",
 		},
 	}
 
