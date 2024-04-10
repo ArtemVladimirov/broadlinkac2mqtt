@@ -1,4 +1,4 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.21-bullseye as base
+FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.21-alpine as base
 
 RUN adduser \
   --disabled-password \
