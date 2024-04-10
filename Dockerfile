@@ -1,4 +1,4 @@
-FROM golang:1.21-bullseye as base
+FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.21-bullseye as base
 
 RUN adduser \
   --disabled-password \
@@ -16,7 +16,7 @@ COPY . .
 RUN go mod download
 RUN go mod verify
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /main .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /main .
 
 FROM scratch
 
