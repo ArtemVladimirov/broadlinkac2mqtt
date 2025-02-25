@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"log/slog"
+
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
 	paho "github.com/eclipse/paho.mqtt.golang"
