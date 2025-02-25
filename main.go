@@ -2,6 +2,14 @@ package main
 
 import (
 	"context"
+	"io"
+	"log/slog"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt"
 	workspaceMqttModels "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
@@ -14,13 +22,6 @@ import (
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/config"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"log/slog"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 )
 
 type App struct {

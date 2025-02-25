@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
 	paho "github.com/eclipse/paho.mqtt.golang"
-	"log/slog"
 )
 
 type mqttPublisher struct {

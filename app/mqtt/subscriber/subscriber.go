@@ -2,13 +2,14 @@ package subscriber
 
 import (
 	"context"
+	"log/slog"
+	"strconv"
+	"strings"
+
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
 	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"log/slog"
-	"strconv"
-	"strings"
 )
 
 type mqttSubscriber struct {

@@ -2,16 +2,48 @@ package models
 
 import (
 	"time"
-
-	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 )
 
 type Device struct {
-	Config          models_service.DeviceConfig
-	Auth            *models_service.DeviceAuth
+	Config          DeviceConfig
+	Auth            *DeviceAuth
 	DeviceStatus    DeviceStatus
-	DeviceStatusRaw *models_service.DeviceStatusRaw
+	DeviceStatusRaw *DeviceStatusRaw
 	MqttLastMessage MqttStatus
+}
+
+type DeviceConfig struct {
+	Mac             string
+	Ip              string
+	Name            string
+	Port            uint16
+	TemperatureUnit string
+}
+
+type DeviceAuth struct {
+	LastMessageId int
+	DevType       int
+	Id            [4]byte
+	Key           []byte
+	Iv            []byte
+}
+
+type DeviceStatusRaw struct {
+	UpdatedAt          time.Time
+	Temperature        float32
+	Power              byte
+	FixationVertical   byte
+	Mode               byte
+	Sleep              byte
+	Display            byte
+	Mildew             byte
+	Health             byte
+	FixationHorizontal byte
+	FanSpeed           byte
+	IFeel              byte
+	Mute               byte
+	Turbo              byte
+	Clean              byte
 }
 
 type DeviceStatus struct {
@@ -32,11 +64,11 @@ type ReadDeviceConfigInput struct {
 }
 
 type ReadDeviceConfigReturn struct {
-	Config models_service.DeviceConfig
+	Config DeviceConfig
 }
 
 type UpsertDeviceConfigInput struct {
-	Config models_service.DeviceConfig
+	Config DeviceConfig
 }
 
 type ReadDeviceAuthInput struct {
@@ -44,12 +76,12 @@ type ReadDeviceAuthInput struct {
 }
 
 type ReadDeviceAuthReturn struct {
-	Auth models_service.DeviceAuth
+	Auth DeviceAuth
 }
 
 type UpsertDeviceAuthInput struct {
 	Mac  string
-	Auth models_service.DeviceAuth
+	Auth DeviceAuth
 }
 
 type UpsertAmbientTempInput struct {
@@ -70,12 +102,12 @@ type ReadDeviceStatusRawInput struct {
 }
 
 type ReadDeviceStatusRawReturn struct {
-	Status models_service.DeviceStatusRaw
+	Status DeviceStatusRaw
 }
 
 type UpsertDeviceStatusRawInput struct {
 	Mac    string
-	Status models_service.DeviceStatusRaw
+	Status DeviceStatusRaw
 }
 
 type MqttModeMessage struct {

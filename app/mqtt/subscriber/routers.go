@@ -2,9 +2,10 @@ package subscriber
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"log/slog"
 )
 
 func Routers(ctx context.Context, logger *slog.Logger, mac string, topicPrefix string, client mqtt.Client, handler app.MqttSubscriber) {
