@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"log/slog"
 
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
@@ -16,7 +17,7 @@ type mqttPublisher struct {
 	client     paho.Client
 }
 
-func NewMqttSender(logger *slog.Logger, mqttConfig models.ConfigMqtt, client paho.Client) *mqttPublisher {
+func NewMqttSender(logger *slog.Logger, mqttConfig models.ConfigMqtt, client paho.Client) app.MqttPublisher {
 	return &mqttPublisher{
 		logger:     logger,
 		mqttConfig: mqttConfig,

@@ -27,7 +27,7 @@ type service struct {
 	logger         *slog.Logger
 }
 
-func NewService(logger *slog.Logger, topicPrefix string, updateInterval int, mqtt app.MqttPublisher, webClient app.WebClient, cache app.Cache) *service {
+func NewService(logger *slog.Logger, topicPrefix string, updateInterval int, mqtt app.MqttPublisher, webClient app.WebClient, cache app.Cache) app.Service {
 	return &service{
 		logger:         logger,
 		topicPrefix:    topicPrefix,

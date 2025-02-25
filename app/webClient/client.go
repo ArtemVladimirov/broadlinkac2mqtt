@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 )
 
@@ -14,7 +15,7 @@ type webClient struct {
 	logger *slog.Logger
 }
 
-func NewWebClient(logger *slog.Logger) *webClient {
+func NewWebClient(logger *slog.Logger) app.WebClient {
 	return &webClient{
 		logger: logger,
 	}

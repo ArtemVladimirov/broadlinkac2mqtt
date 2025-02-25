@@ -18,7 +18,7 @@ type mqttSubscriber struct {
 	service    app.Service
 }
 
-func NewMqttReceiver(logger *slog.Logger, service app.Service, mqttConfig models.ConfigMqtt) *mqttSubscriber {
+func NewMqttReceiver(logger *slog.Logger, service app.Service, mqttConfig models.ConfigMqtt) app.MqttSubscriber {
 	return &mqttSubscriber{
 		logger:     logger,
 		mqttConfig: mqttConfig,

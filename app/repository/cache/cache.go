@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 )
 
@@ -14,7 +15,7 @@ type cache struct {
 	logger  *slog.Logger
 }
 
-func NewCache(logger *slog.Logger) *cache {
+func NewCache(logger *slog.Logger) app.Cache {
 	return &cache{
 		devices: make(map[string]models.Device),
 		mutex:   new(sync.RWMutex),
