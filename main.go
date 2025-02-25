@@ -58,20 +58,23 @@ func NewApp(logger *slog.Logger) (*App, error) {
 
 	//Configure MQTT Sender Layer
 	mqttSender := workspaceMqttSender.NewMqttSender(
+		logger,
 		mqttConfig,
 		client,
 	)
 
 	//Configure Service Layer
 	service := workspaceService.NewService(
+		logger,
 		cfg.Mqtt.TopicPrefix,
 		cfg.Service.UpdateInterval,
 		mqttSender,
-		workspaceWebClient.NewWebClient(),
-		workspaceCache.NewCache(),
+		workspaceWebClient.NewWebClient(logger),
+		workspaceCache.NewCache(logger),
 	)
 	//Configure MQTT Receiver Layer
 	mqttReceiver := workspaceMqttReceiver.NewMqttReceiver(
+		logger,
 		service,
 		mqttConfig,
 	)
@@ -124,7 +127,7 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	if app.autoDiscoveryTopic != nil {
-		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(ctx, logger)); token.Wait() && token.Error() != nil {
+		if token := app.client.Subscribe(*app.autoDiscoveryTopic+"/status", 0, app.wsMqttReceiver.GetStatesOnHomeAssistantRestart(ctx)); token.Wait() && token.Error() != nil {
 			err := token.Error()
 			if err != nil {
 				logger.ErrorContext(ctx, "failed to subscribe on LWT",
@@ -137,7 +140,7 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 
 	// Create Device
 	for _, device := range app.devices {
-		err := app.wsService.CreateDevice(ctx, logger, &workspaceServiceModels.CreateDeviceInput{
+		err := app.wsService.CreateDevice(ctx, &workspaceServiceModels.CreateDeviceInput{
 			Config: workspaceServiceModels.DeviceConfig{
 				Mac:             device.Mac,
 				Ip:              device.Ip,
@@ -156,7 +159,7 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 		device := device
 		go func() {
 			for {
-				err := app.wsService.AuthDevice(ctx, logger, &workspaceServiceModels.AuthDeviceInput{Mac: device.Mac})
+				err := app.wsService.AuthDevice(ctx, &workspaceServiceModels.AuthDeviceInput{Mac: device.Mac})
 				if err == nil {
 					break
 				}
@@ -170,13 +173,13 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 
 			//Publish Discovery Topic
 			if app.autoDiscoveryTopic != nil {
-				err := app.wsService.PublishDiscoveryTopic(ctx, logger, &workspaceServiceModels.PublishDiscoveryTopicInput{Device: device})
+				err := app.wsService.PublishDiscoveryTopic(ctx, &workspaceServiceModels.PublishDiscoveryTopicInput{Device: device})
 				if err != nil {
 					return
 				}
 			}
 
-			err := app.wsService.StartDeviceMonitoring(ctx, logger, &workspaceServiceModels.StartDeviceMonitoringInput{Mac: device.Mac})
+			err := app.wsService.StartDeviceMonitoring(ctx, &workspaceServiceModels.StartDeviceMonitoringInput{Mac: device.Mac})
 			if err != nil {
 				return
 			}
@@ -204,7 +207,7 @@ func (app *App) Run(ctx context.Context, logger *slog.Logger) error {
 	for _, device := range app.devices {
 		device := device
 		g.Go(func() error {
-			err := app.wsService.UpdateDeviceAvailability(ctx, logger, &workspaceServiceModels.UpdateDeviceAvailabilityInput{
+			err := app.wsService.UpdateDeviceAvailability(ctx, &workspaceServiceModels.UpdateDeviceAvailabilityInput{
 				Mac:          device.Mac,
 				Availability: "offline",
 			})

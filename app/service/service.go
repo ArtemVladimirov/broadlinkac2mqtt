@@ -24,10 +24,12 @@ type service struct {
 	mqtt           app.MqttPublisher
 	webClient      app.WebClient
 	cache          app.Cache
+	logger         *slog.Logger
 }
 
-func NewService(topicPrefix string, updateInterval int, mqtt app.MqttPublisher, webClient app.WebClient, cache app.Cache) *service {
+func NewService(logger *slog.Logger, topicPrefix string, updateInterval int, mqtt app.MqttPublisher, webClient app.WebClient, cache app.Cache) *service {
 	return &service{
+		logger:         logger,
 		topicPrefix:    topicPrefix,
 		updateInterval: updateInterval,
 		mqtt:           mqtt,
@@ -36,7 +38,7 @@ func NewService(topicPrefix string, updateInterval int, mqtt app.MqttPublisher, 
 	}
 }
 
-func (s *service) CreateDevice(ctx context.Context, logger *slog.Logger, input *models.CreateDeviceInput) error {
+func (s *service) CreateDevice(ctx context.Context, input *models.CreateDeviceInput) error {
 	key := []byte{0x09, 0x76, 0x28, 0x34, 0x3f, 0xe9, 0x9e, 0x23, 0x76, 0x5c, 0x15, 0x13, 0xac, 0xcf, 0x8b, 0x02}
 	iv := []byte{0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58}
 
@@ -44,7 +46,7 @@ func (s *service) CreateDevice(ctx context.Context, logger *slog.Logger, input *
 	upsertDeviceConfigInput := &models_repo.UpsertDeviceConfigInput{
 		Config: models_repo.DeviceConfig(input.Config),
 	}
-	err := s.cache.UpsertDeviceConfig(ctx, logger, upsertDeviceConfigInput)
+	err := s.cache.UpsertDeviceConfig(ctx, upsertDeviceConfigInput)
 	if err != nil {
 		return err
 	}
@@ -62,7 +64,7 @@ func (s *service) CreateDevice(ctx context.Context, logger *slog.Logger, input *
 		Mac:  input.Config.Mac,
 		Auth: auth,
 	}
-	err = s.cache.UpsertDeviceAuth(ctx, logger, upsertDeviceAuthInput)
+	err = s.cache.UpsertDeviceAuth(ctx, upsertDeviceAuthInput)
 	if err != nil {
 		return err
 	}
@@ -100,7 +102,7 @@ AuthDevice
 0070   3e ea 55 af e0 62 cd d6 38 16 4b 81 cc 38 40 84
 0080   ef 9e
 */
-func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *models.AuthDeviceInput) error {
+func (s *service) AuthDevice(ctx context.Context, input *models.AuthDeviceInput) error {
 	payload := [0x50]byte{}
 	payload[0x04] = 0x31
 	payload[0x05] = 0x31
@@ -132,9 +134,9 @@ func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *mo
 		Payload: payload[:],
 		Mac:     input.Mac,
 	}
-	response, err := s.SendCommand(ctx, logger, sendCommandInput)
+	response, err := s.SendCommand(ctx, sendCommandInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send command", slog.Any("err", err), slog.Any("input", input))
+		s.logger.ErrorContext(ctx, "failed to send command", slog.Any("err", err), slog.Any("input", input))
 		return err
 	}
 
@@ -143,7 +145,7 @@ func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *mo
 		response.Payload = response.Payload[0x38:]
 	} else {
 		const msg = "response is too short"
-		logger.ErrorContext(ctx, msg, slog.Any("input", input), slog.Any("payload", response.Payload))
+		s.logger.ErrorContext(ctx, msg, slog.Any("input", input), slog.Any("payload", response.Payload))
 		return errors.New(msg)
 	}
 
@@ -151,16 +153,16 @@ func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *mo
 	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
-	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, logger, readDeviceAuthInput)
+	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "device not found", slog.Any("err", err), slog.Any("input", input))
+		s.logger.ErrorContext(ctx, "device not found", slog.Any("err", err), slog.Any("input", input))
 		return err
 	}
 	auth := readDeviceAuthReturn.Auth
 
 	response.Payload, err = coder.Decrypt(auth.Key, auth.Iv, response.Payload)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to decode response", slog.Any("err", err), slog.Any("input", input))
+		s.logger.ErrorContext(ctx, "failed to decode response", slog.Any("err", err), slog.Any("input", input))
 		return err
 	}
 
@@ -177,12 +179,7 @@ func (s *service) AuthDevice(ctx context.Context, logger *slog.Logger, input *mo
 		Mac:  input.Mac,
 		Auth: auth,
 	}
-	err = s.cache.UpsertDeviceAuth(ctx, logger, upsertDeviceAuthInput)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.cache.UpsertDeviceAuth(ctx, upsertDeviceAuthInput)
 }
 
 /*
@@ -212,20 +209,20 @@ GetDeviceAmbientTemperature
 0080   ed 81 d1 67 c3 8d b2 69 c5 0a e4 e2 91 05 bc 52
 0090   5e 60
 */
-func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.Logger, input *models.GetDeviceAmbientTemperatureInput) error {
+func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models.GetDeviceAmbientTemperatureInput) error {
 	sendCommandInput := &models.SendCommandInput{
 		Command: 0x6a,
 		Payload: []byte{12, 0, 187, 0, 6, 128, 0, 0, 2, 0, 33, 1, 27, 126, 0, 0},
 		Mac:     input.Mac,
 	}
-	response, err := s.SendCommand(ctx, logger, sendCommandInput)
+	response, err := s.SendCommand(ctx, sendCommandInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send a command", slog.Any("err", err), slog.Any("input", sendCommandInput))
+		s.logger.ErrorContext(ctx, "failed to send a command", slog.Any("err", err), slog.Any("input", sendCommandInput))
 		return err
 	}
 
 	if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
-		logger.ErrorContext(ctx, "Checksum is incorrect", slog.Any("input", sendCommandInput))
+		s.logger.ErrorContext(ctx, "Checksum is incorrect", slog.Any("input", sendCommandInput))
 		return models.ErrorInvalidResultPacket
 	}
 
@@ -233,7 +230,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 	if len(response.Payload) >= 0x38 {
 		response.Payload = response.Payload[0x38:]
 	} else {
-		logger.ErrorContext(ctx, "response is too short", slog.Any("input", sendCommandInput))
+		s.logger.ErrorContext(ctx, "response is too short", slog.Any("input", sendCommandInput))
 		return models.ErrorInvalidResultPacketLength
 	}
 
@@ -241,15 +238,15 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
-	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, logger, readDeviceAuthInput)
+	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "device not found", slog.Any("err", err), slog.Any("input", readDeviceAuthInput))
+		s.logger.ErrorContext(ctx, "device not found", slog.Any("err", err), slog.Any("input", readDeviceAuthInput))
 		return err
 	}
 
 	response.Payload, err = coder.Decrypt(readDeviceAuthReturn.Auth.Key, readDeviceAuthReturn.Auth.Iv, response.Payload)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to decrypt response", slog.Any("err", err), slog.Any("input", response.Payload))
+		s.logger.ErrorContext(ctx, "failed to decrypt response", slog.Any("err", err), slog.Any("input", response.Payload))
 		return err
 	}
 
@@ -263,13 +260,13 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 	ambientTemp := float32(response.Payload[15]-0b00100000) + (float32(response.Payload[31]) / 10)
 
 	readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: input.Mac}
-	readAmbientTempReturn, err := s.cache.ReadAmbientTemp(ctx, logger, readAmbientTempInput)
+	readAmbientTempReturn, err := s.cache.ReadAmbientTemp(ctx, readAmbientTempInput)
 	if err != nil {
 		switch err {
 		case models_repo.ErrorDeviceStatusAmbientTempNotFound:
 			err = nil
 		default:
-			logger.ErrorContext(ctx, "failed to read the ambient temperature",
+			s.logger.ErrorContext(ctx, "failed to read the ambient temperature",
 				slog.Any("err", err),
 				slog.Any("input", readAmbientTempInput))
 			return err
@@ -279,12 +276,12 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 	if readAmbientTempReturn != nil {
 		// Sometimes there is strange temperature
 		if readAmbientTempReturn.Temperature-ambientTemp > 4 || ambientTemp-readAmbientTempReturn.Temperature > 4 {
-			logger.ErrorContext(ctx, "failed to read the ambient temperature", slog.Any("input", readAmbientTempInput))
+			s.logger.ErrorContext(ctx, "failed to read the ambient temperature", slog.Any("input", readAmbientTempInput))
 			return models.ErrorInvalidParameterTemperature
 		}
 	}
 
-	logger.DebugContext(ctx, "Ambient temperature",
+	s.logger.DebugContext(ctx, "Ambient temperature",
 		slog.Any("ambientTemp", ambientTemp),
 		slog.String("device", input.Mac))
 
@@ -292,9 +289,9 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 		readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
 			Mac: input.Mac,
 		}
-		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, readDeviceConfigInput)
 		if err != nil {
-			logger.ErrorContext(ctx, "failed to read device config",
+			s.logger.ErrorContext(ctx, "failed to read device config",
 				slog.Any("err", err),
 				slog.String("device", input.Mac),
 				slog.Any("input", readDeviceConfigInput))
@@ -306,9 +303,9 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 			Mac:         input.Mac,
 			Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, ambientTemp),
 		}
-		err = s.mqtt.PublishAmbientTemp(ctx, logger, publishAmbientTempInput)
+		err = s.mqtt.PublishAmbientTemp(ctx, publishAmbientTempInput)
 		if err != nil {
-			logger.ErrorContext(ctx, "failed to publish ambient temperature",
+			s.logger.ErrorContext(ctx, "failed to publish ambient temperature",
 				slog.Any("input", publishAmbientTempInput),
 				slog.Any("err", err))
 			return err
@@ -316,9 +313,9 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 
 		// Save the new value in storage
 		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: ambientTemp, Mac: input.Mac}
-		err = s.cache.UpsertAmbientTemp(ctx, logger, upsertAmbientTempInput)
+		err = s.cache.UpsertAmbientTemp(ctx, upsertAmbientTempInput)
 		if err != nil {
-			logger.ErrorContext(ctx, "failed to upsert the temperature",
+			s.logger.ErrorContext(ctx, "failed to upsert the temperature",
 				slog.Any("input", upsertAmbientTempInput),
 				slog.Any("err", err))
 			return err
@@ -329,16 +326,16 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, logger *slog.
 }
 
 // GetDeviceStates returns devices states
-func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, input *models.GetDeviceStatesInput) error {
+func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceStatesInput) error {
 	sendCommandInput := &models.SendCommandInput{
 		Command: 0x6a,
 		Payload: []byte{12, 0, 187, 0, 6, 128, 0, 0, 2, 0, 17, 1, 43, 126, 0, 0},
 		Mac:     input.Mac,
 	}
 
-	response, err := s.SendCommand(ctx, logger, sendCommandInput)
+	response, err := s.SendCommand(ctx, sendCommandInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send the command to get states",
+		s.logger.ErrorContext(ctx, "failed to send the command to get states",
 			slog.Any("input", sendCommandInput),
 			slog.Any("err", err))
 		return err
@@ -349,7 +346,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	////////////////////////////////////////////////////////////
 
 	if uint16(response.Payload[0x22])|(uint16(response.Payload[0x23])<<8) != 0 {
-		logger.ErrorContext(ctx, "Checksum is incorrect",
+		s.logger.ErrorContext(ctx, "Checksum is incorrect",
 			slog.Any("input", response.Payload))
 		return models.ErrorInvalidResultPacket
 	}
@@ -358,9 +355,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
-	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, logger, readDeviceAuthInput)
+	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "device not found",
+		s.logger.ErrorContext(ctx, "device not found",
 			slog.Any("input", readDeviceAuthInput),
 			slog.String("device", input.Mac),
 			slog.Any("err", err))
@@ -371,7 +368,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	if len(response.Payload) >= 0x38 {
 		response.Payload = response.Payload[0x38:]
 	} else {
-		logger.ErrorContext(ctx, "response is too short",
+		s.logger.ErrorContext(ctx, "response is too short",
 			slog.String("device", input.Mac),
 			slog.Any("input", response.Payload))
 		return models.ErrorInvalidResultPacketLength
@@ -379,7 +376,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 
 	response.Payload, err = coder.Decrypt(readDeviceAuthReturn.Auth.Key, readDeviceAuthReturn.Auth.Iv, response.Payload)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to decrypt the response",
+		s.logger.ErrorContext(ctx, "failed to decrypt the response",
 			slog.Any("input", response.Payload),
 			slog.String("device", input.Mac),
 			slog.Any("err", err))
@@ -387,14 +384,14 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	}
 
 	if response.Payload[4] != 0x07 {
-		logger.ErrorContext(ctx, "it is not a result packet",
+		s.logger.ErrorContext(ctx, "it is not a result packet",
 			slog.String("device", input.Mac),
 			slog.Any("input", response.Payload))
 		return models.ErrorInvalidResultPacket
 	}
 
 	if response.Payload[0] != 0x19 {
-		logger.ErrorContext(ctx, "the length of the packet is incorrect. Must be 25",
+		s.logger.ErrorContext(ctx, "the length of the packet is incorrect. Must be 25",
 			slog.String("device", input.Mac),
 			slog.Any("input", response.Payload))
 		return models.ErrorInvalidResultPacketLength
@@ -422,7 +419,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	}
 
 	if raw.Temperature < 16.0 {
-		logger.ErrorContext(ctx, "wrong temperature, skip package",
+		s.logger.ErrorContext(ctx, "wrong temperature, skip package",
 			slog.String("device", input.Mac),
 			slog.Any("input", raw.Temperature))
 		return models.ErrorInvalidResultPacketLength
@@ -436,13 +433,13 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 		Mac: input.Mac,
 	}
 
-	readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(ctx, logger, readDeviceStatusRawInput)
+	readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(ctx, readDeviceStatusRawInput)
 	if err != nil {
 		switch err {
 		case models_repo.ErrorDeviceStatusRawNotFound:
 			err = nil
 		default:
-			logger.ErrorContext(ctx, "failed to read the device status",
+			s.logger.ErrorContext(ctx, "failed to read the device status",
 				slog.Any("err", err),
 				slog.Any("input", readDeviceStatusRawInput))
 			return err
@@ -450,7 +447,7 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	}
 
 	deviceStatusHass := raw.ConvertToDeviceStatusHass()
-	logger.DebugContext(ctx, "The converted current device status",
+	s.logger.DebugContext(ctx, "The converted current device status",
 		slog.String("device", input.Mac))
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -462,9 +459,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				Mac: input.Mac,
 			}
 
-			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(gCtx, logger, readDeviceConfigInput)
+			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(gCtx, readDeviceConfigInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to read device config",
+				s.logger.ErrorContext(gCtx, "failed to read device config",
 					slog.Any("err", err),
 					slog.String("device", input.Mac),
 					slog.Any("input", readDeviceConfigInput))
@@ -476,9 +473,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, deviceStatusHass.Temperature),
 			}
 
-			err = s.mqtt.PublishTemperature(gCtx, logger, publishTemperatureInput)
+			err = s.mqtt.PublishTemperature(gCtx, publishTemperatureInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device set temperature",
+				s.logger.ErrorContext(gCtx, "failed to publish the device set temperature",
 					slog.Any("err", err),
 					slog.Any("input", publishTemperatureInput))
 				return err
@@ -496,9 +493,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				Mac:  input.Mac,
 				Mode: deviceStatusHass.Mode,
 			}
-			err = s.mqtt.PublishMode(gCtx, logger, publishModeInput)
+			err = s.mqtt.PublishMode(gCtx, publishModeInput)
 			if err != nil {
-				logger.ErrorContext(ctx, "failed to publish the device mode",
+				s.logger.ErrorContext(ctx, "failed to publish the device mode",
 					slog.Any("err", err),
 					slog.Any("input", publishModeInput))
 				return err
@@ -518,9 +515,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				FanMode: deviceStatusHass.FanMode,
 			}
 
-			err = s.mqtt.PublishFanMode(gCtx, logger, publishFanModeInput)
+			err = s.mqtt.PublishFanMode(gCtx, publishFanModeInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device fan mode",
+				s.logger.ErrorContext(gCtx, "failed to publish the device fan mode",
 					slog.Any("err", err),
 					slog.Any("input", publishFanModeInput))
 				return err
@@ -537,9 +534,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				SwingMode: deviceStatusHass.SwingMode,
 			}
 
-			err = s.mqtt.PublishSwingMode(gCtx, logger, publishSwingModeInput)
+			err = s.mqtt.PublishSwingMode(gCtx, publishSwingModeInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device swing mode",
+				s.logger.ErrorContext(gCtx, "failed to publish the device swing mode",
 					slog.Any("err", err),
 					slog.Any("input", publishSwingModeInput))
 				return err
@@ -556,9 +553,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 				Status: deviceStatusHass.DisplaySwitch,
 			}
 
-			err = s.mqtt.PublishDisplaySwitch(gCtx, logger, publishDisplaySwitchInput)
+			err = s.mqtt.PublishDisplaySwitch(gCtx, publishDisplaySwitchInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the display switch status",
+				s.logger.ErrorContext(gCtx, "failed to publish the display switch status",
 					slog.Any("err", err),
 					slog.Any("input", publishDisplaySwitchInput))
 				return err
@@ -581,9 +578,9 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 		Status: models_repo.DeviceStatusRaw(raw),
 	}
 
-	err = s.cache.UpsertDeviceStatusRaw(ctx, logger, upsertDeviceStatusRawInput)
+	err = s.cache.UpsertDeviceStatusRaw(ctx, upsertDeviceStatusRawInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to upsert the raw device status",
+		s.logger.ErrorContext(ctx, "failed to upsert the raw device status",
 			slog.Any("err", err),
 			slog.Any("input", upsertDeviceStatusRawInput))
 		return err
@@ -591,14 +588,14 @@ func (s *service) GetDeviceStates(ctx context.Context, logger *slog.Logger, inpu
 	return nil
 }
 
-func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
+func (s *service) SendCommand(ctx context.Context, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
 	// Read the saved value in repo if no
 	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
-	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, logger, readDeviceAuthInput)
+	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "device not found",
+		s.logger.ErrorContext(ctx, "device not found",
 			slog.Any("err", err),
 			slog.Any("input", readDeviceAuthInput))
 		return nil, err
@@ -612,7 +609,7 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 	for i := 0; i < len(input.Mac); i = i + 2 {
 		val, err := strconv.ParseUint(input.Mac[i:i+2], 16, 8)
 		if err != nil {
-			logger.ErrorContext(ctx, "mac address is not correct",
+			s.logger.ErrorContext(ctx, "mac address is not correct",
 				slog.Any("err", err),
 				slog.Any("input", input.Mac))
 			return nil, err
@@ -655,7 +652,7 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 
 	input.Payload, err = coder.Encrypt(auth.Key, auth.Iv, input.Payload)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to encrypt payload",
+		s.logger.ErrorContext(ctx, "failed to encrypt payload",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input.Payload))
@@ -683,12 +680,12 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 		Mac:  input.Mac,
 		Auth: auth,
 	}
-	err = s.cache.UpsertDeviceAuth(ctx, logger, upsertDeviceAuthInput)
+	err = s.cache.UpsertDeviceAuth(ctx, upsertDeviceAuthInput)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.DebugContext(ctx, "packet",
+	s.logger.DebugContext(ctx, "packet",
 		slog.Any("err", err),
 		slog.String("device", input.Mac),
 		slog.Any("input", packetSlice))
@@ -698,9 +695,9 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 		Mac: input.Mac,
 	}
 
-	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, readDeviceConfigInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to read device config",
+		s.logger.ErrorContext(ctx, "failed to read device config",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", readDeviceConfigInput))
@@ -714,9 +711,9 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 		Port:    readDeviceConfigReturn.Config.Port,
 	}
 
-	sendCommandReturn, err := s.webClient.SendCommand(ctx, logger, sendCommandInput)
+	sendCommandReturn, err := s.webClient.SendCommand(ctx, sendCommandInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send a command",
+		s.logger.ErrorContext(ctx, "failed to send a command",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", sendCommandInput))
@@ -726,7 +723,7 @@ func (s *service) SendCommand(ctx context.Context, logger *slog.Logger, input *m
 	return &models.SendCommandReturn{Payload: sendCommandReturn.Payload}, nil
 }
 
-func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *slog.Logger, input *models.PublishDiscoveryTopicInput) error {
+func (s *service) PublishDiscoveryTopic(ctx context.Context, input *models.PublishDiscoveryTopicInput) error {
 	prefix := s.topicPrefix + "/" + input.Device.Mac
 
 	device := models_mqtt.DiscoveryTopicDevice{
@@ -774,7 +771,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *slog.Logger
 			TemperatureUnit:         input.Device.TemperatureUnit,
 		},
 	}
-	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, logger, publishClimateDiscoveryTopicInput)
+	err := s.mqtt.PublishClimateDiscoveryTopic(ctx, publishClimateDiscoveryTopicInput)
 	if err != nil {
 		return err
 	}
@@ -791,18 +788,13 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, logger *slog.Logger
 		},
 	}
 
-	err = s.mqtt.PublishSwitchDiscoveryTopic(ctx, logger, publishSwitchScreenDiscoveryTopicInput)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.mqtt.PublishSwitchDiscoveryTopic(ctx, publishSwitchScreenDiscoveryTopicInput)
 }
 
-func (s *service) UpdateFanMode(ctx context.Context, logger *slog.Logger, input *models.UpdateFanModeInput) error {
+func (s *service) UpdateFanMode(ctx context.Context, input *models.UpdateFanModeInput) error {
 	err := input.Validate()
 	if err != nil {
-		logger.ErrorContext(ctx, "input data is not valid",
+		s.logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input))
@@ -817,9 +809,9 @@ func (s *service) UpdateFanMode(ctx context.Context, logger *slog.Logger, input 
 		},
 	}
 
-	err = s.cache.UpsertMqttFanModeMessage(ctx, logger, upsertMqttFanModeMessageInput)
+	err = s.cache.UpsertMqttFanModeMessage(ctx, upsertMqttFanModeMessageInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
+		s.logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertMqttFanModeMessageInput))
@@ -830,9 +822,9 @@ func (s *service) UpdateFanMode(ctx context.Context, logger *slog.Logger, input 
 		Mac:     input.Mac,
 		FanMode: input.FanMode,
 	}
-	err = s.mqtt.PublishFanMode(ctx, logger, publishFanModeInput)
+	err = s.mqtt.PublishFanMode(ctx, publishFanModeInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to publish fan mode to mqtt",
+		s.logger.ErrorContext(ctx, "failed to publish fan mode to mqtt",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", publishFanModeInput))
@@ -842,10 +834,10 @@ func (s *service) UpdateFanMode(ctx context.Context, logger *slog.Logger, input 
 	return nil
 }
 
-func (s *service) UpdateMode(ctx context.Context, logger *slog.Logger, input *models.UpdateModeInput) error {
+func (s *service) UpdateMode(ctx context.Context, input *models.UpdateModeInput) error {
 	err := input.Validate()
 	if err != nil {
-		logger.ErrorContext(ctx, "input data is not valid",
+		s.logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input))
@@ -860,9 +852,9 @@ func (s *service) UpdateMode(ctx context.Context, logger *slog.Logger, input *mo
 		},
 	}
 
-	err = s.cache.UpsertMqttModeMessage(ctx, logger, upsertMqttModeMessageInput)
+	err = s.cache.UpsertMqttModeMessage(ctx, upsertMqttModeMessageInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
+		s.logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertMqttModeMessageInput))
@@ -873,9 +865,9 @@ func (s *service) UpdateMode(ctx context.Context, logger *slog.Logger, input *mo
 		Mac:  input.Mac,
 		Mode: input.Mode,
 	}
-	err = s.mqtt.PublishMode(ctx, logger, publishModeInput)
+	err = s.mqtt.PublishMode(ctx, publishModeInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to publish mode to mqtt",
+		s.logger.ErrorContext(ctx, "failed to publish mode to mqtt",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", publishModeInput))
@@ -885,10 +877,10 @@ func (s *service) UpdateMode(ctx context.Context, logger *slog.Logger, input *mo
 	return nil
 }
 
-func (s *service) UpdateSwingMode(ctx context.Context, logger *slog.Logger, input *models.UpdateSwingModeInput) error {
+func (s *service) UpdateSwingMode(ctx context.Context, input *models.UpdateSwingModeInput) error {
 	err := input.Validate()
 	if err != nil {
-		logger.ErrorContext(ctx, "input data is not valid",
+		s.logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input))
@@ -903,9 +895,9 @@ func (s *service) UpdateSwingMode(ctx context.Context, logger *slog.Logger, inpu
 		},
 	}
 
-	err = s.cache.UpsertMqttSwingModeMessage(ctx, logger, upsertMqttSwingModeMessageInput)
+	err = s.cache.UpsertMqttSwingModeMessage(ctx, upsertMqttSwingModeMessageInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
+		s.logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertMqttSwingModeMessageInput))
@@ -916,9 +908,9 @@ func (s *service) UpdateSwingMode(ctx context.Context, logger *slog.Logger, inpu
 		Mac:       input.Mac,
 		SwingMode: input.SwingMode,
 	}
-	err = s.mqtt.PublishSwingMode(ctx, logger, publishSwingModeInput)
+	err = s.mqtt.PublishSwingMode(ctx, publishSwingModeInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to publish swing mode to mqtt",
+		s.logger.ErrorContext(ctx, "failed to publish swing mode to mqtt",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", publishSwingModeInput))
@@ -928,13 +920,13 @@ func (s *service) UpdateSwingMode(ctx context.Context, logger *slog.Logger, inpu
 	return nil
 }
 
-func (s *service) UpdateTemperature(ctx context.Context, logger *slog.Logger, input *models.UpdateTemperatureInput) error {
+func (s *service) UpdateTemperature(ctx context.Context, input *models.UpdateTemperatureInput) error {
 	readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
 		Mac: input.Mac,
 	}
-	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, logger, readDeviceConfigInput)
+	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, readDeviceConfigInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to read device config",
+		s.logger.ErrorContext(ctx, "failed to read device config",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", readDeviceConfigInput))
@@ -944,7 +936,7 @@ func (s *service) UpdateTemperature(ctx context.Context, logger *slog.Logger, in
 	input.Temperature = converter.Temperature(readDeviceConfigReturn.Config.TemperatureUnit, models.Celsius, input.Temperature)
 	err = input.Validate()
 	if err != nil {
-		logger.ErrorContext(ctx, "input data is not valid",
+		s.logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input))
@@ -959,9 +951,9 @@ func (s *service) UpdateTemperature(ctx context.Context, logger *slog.Logger, in
 		},
 	}
 
-	err = s.cache.UpsertMqttTemperatureMessage(ctx, logger, upsertMqttTemperatureMessageInput)
+	err = s.cache.UpsertMqttTemperatureMessage(ctx, upsertMqttTemperatureMessageInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
+		s.logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertMqttTemperatureMessageInput))
@@ -971,10 +963,10 @@ func (s *service) UpdateTemperature(ctx context.Context, logger *slog.Logger, in
 	return nil
 }
 
-func (s *service) UpdateDisplaySwitch(ctx context.Context, logger *slog.Logger, input *models.UpdateDisplaySwitchInput) error {
+func (s *service) UpdateDisplaySwitch(ctx context.Context, input *models.UpdateDisplaySwitchInput) error {
 	err := input.Validate()
 	if err != nil {
-		logger.ErrorContext(ctx, "input data is not valid",
+		s.logger.ErrorContext(ctx, "input data is not valid",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", input))
@@ -989,9 +981,9 @@ func (s *service) UpdateDisplaySwitch(ctx context.Context, logger *slog.Logger, 
 		},
 	}
 
-	err = s.cache.UpsertMqttDisplaySwitchMessage(ctx, logger, upsertDisplaySwitchMessageInput)
+	err = s.cache.UpsertMqttDisplaySwitchMessage(ctx, upsertDisplaySwitchMessageInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
+		s.logger.ErrorContext(ctx, "failed to save mqtt message to cache storage",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertDisplaySwitchMessageInput))
@@ -1001,14 +993,14 @@ func (s *service) UpdateDisplaySwitch(ctx context.Context, logger *slog.Logger, 
 	return nil
 }
 
-func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, input *models.UpdateDeviceStatesInput) error {
+func (s *service) UpdateDeviceStates(ctx context.Context, input *models.UpdateDeviceStatesInput) error {
 	readDeviceStatusRawInput := &models_repo.ReadDeviceStatusRawInput{
 		Mac: input.Mac,
 	}
 
-	readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(ctx, logger, readDeviceStatusRawInput)
+	readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(ctx, readDeviceStatusRawInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to read device raw status",
+		s.logger.ErrorContext(ctx, "failed to read device raw status",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", readDeviceStatusRawInput))
@@ -1021,7 +1013,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 	if input.SwingMode != nil {
 		key, ok := models.VerticalFixationStatusesInvert[*input.SwingMode]
 		if !ok {
-			logger.ErrorContext(ctx, "Invalid parameter Swing mode",
+			s.logger.ErrorContext(ctx, "Invalid parameter Swing mode",
 				slog.String("device", input.Mac),
 				slog.Any("input", *input.SwingMode))
 
@@ -1037,7 +1029,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 	var temperature, temperature05 int
 	if input.Temperature != nil {
 		if *input.Temperature > 32 || *input.Temperature < 16 {
-			logger.ErrorContext(ctx, "Invalid parameter temperature",
+			s.logger.ErrorContext(ctx, "Invalid parameter temperature",
 				slog.String("device", input.Mac),
 				slog.Any("input", *input.Temperature))
 
@@ -1072,8 +1064,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 		} else {
 			key, ok := models.FanStatusesInvert[*input.FanMode]
 			if !ok {
-
-				logger.ErrorContext(ctx, "Invalid parameter fan mode",
+				s.logger.ErrorContext(ctx, "Invalid parameter fan mode",
 					slog.String("device", input.Mac),
 					slog.Any("input", *input.FanMode))
 
@@ -1109,7 +1100,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 		} else {
 			key, ok := models.ModeStatusesInvert[*input.Mode]
 			if !ok {
-				logger.ErrorContext(ctx, "Invalid parameter mode",
+				s.logger.ErrorContext(ctx, "Invalid parameter mode",
 					slog.String("device", input.Mac),
 					slog.Any("input", *input.Mode))
 
@@ -1171,9 +1162,9 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 		Payload: payloadChecksum[:],
 		Mac:     input.Mac,
 	}
-	_, err = s.SendCommand(ctx, logger, sendCommandInput)
+	_, err = s.SendCommand(ctx, sendCommandInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send a set command",
+		s.logger.ErrorContext(ctx, "failed to send a set command",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", sendCommandInput))
@@ -1183,14 +1174,14 @@ func (s *service) UpdateDeviceStates(ctx context.Context, logger *slog.Logger, i
 	return nil
 }
 
-func (s *service) UpdateDeviceAvailability(ctx context.Context, logger *slog.Logger, input *models.UpdateDeviceAvailabilityInput) error {
+func (s *service) UpdateDeviceAvailability(ctx context.Context, input *models.UpdateDeviceAvailabilityInput) error {
 	upsertDeviceAvailabilityInput := &models_repo.UpsertDeviceAvailabilityInput{
 		Mac:          input.Mac,
 		Availability: input.Availability,
 	}
-	err := s.cache.UpsertDeviceAvailability(ctx, logger, upsertDeviceAvailabilityInput)
+	err := s.cache.UpsertDeviceAvailability(ctx, upsertDeviceAvailabilityInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to upsert device availability",
+		s.logger.ErrorContext(ctx, "failed to upsert device availability",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", upsertDeviceAvailabilityInput))
@@ -1201,9 +1192,9 @@ func (s *service) UpdateDeviceAvailability(ctx context.Context, logger *slog.Log
 		Mac:          input.Mac,
 		Availability: input.Availability,
 	}
-	err = s.mqtt.PublishAvailability(ctx, logger, publishAvailabilityInput)
+	err = s.mqtt.PublishAvailability(ctx, publishAvailabilityInput)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to create command payload",
+		s.logger.ErrorContext(ctx, "failed to create command payload",
 			slog.Any("err", err),
 			slog.String("device", input.Mac),
 			slog.Any("input", publishAvailabilityInput))
@@ -1213,7 +1204,7 @@ func (s *service) UpdateDeviceAvailability(ctx context.Context, logger *slog.Log
 	return nil
 }
 
-func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger, input *models.StartDeviceMonitoringInput) error {
+func (s *service) StartDeviceMonitoring(ctx context.Context, input *models.StartDeviceMonitoringInput) error {
 	var (
 		modeUpdatedTime, swingModeUpdatedTime, fanModeUpdatedTime, temperatureUpdatedTime time.Time
 		isDisplayOnUpdatedTime                                                            time.Time
@@ -1228,9 +1219,9 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 			return nil
 		default:
 			if time.Now().Sub(lastGetAmbientTemp).Seconds() > 180 {
-				err := s.GetDeviceAmbientTemperature(ctx, logger, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
+				err := s.GetDeviceAmbientTemperature(ctx, &models.GetDeviceAmbientTemperatureInput{Mac: input.Mac})
 				if err != nil {
-					logger.ErrorContext(ctx, "failed to get ambient temperature",
+					s.logger.ErrorContext(ctx, "failed to get ambient temperature",
 						slog.Any("err", err),
 						slog.String("device", input.Mac))
 
@@ -1249,7 +1240,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 				readMqttMessageInput := &models_repo.ReadMqttMessageInput{
 					Mac: input.Mac,
 				}
-				message, err := s.cache.ReadMqttMessage(ctx, logger, readMqttMessageInput)
+				message, err := s.cache.ReadMqttMessage(ctx, readMqttMessageInput)
 				if err != nil {
 					return err
 				}
@@ -1291,9 +1282,9 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 
 				if forcedUpdateDeviceState || int(time.Now().Sub(lastGetDeviceState).Seconds()) > s.updateInterval {
 					for {
-						err = s.GetDeviceStates(ctx, logger, &models.GetDeviceStatesInput{Mac: input.Mac})
+						err = s.GetDeviceStates(ctx, &models.GetDeviceStatesInput{Mac: input.Mac})
 						if err != nil {
-							logger.ErrorContext(ctx, "failed to get AC States",
+							s.logger.ErrorContext(ctx, "failed to get AC States",
 								slog.Any("err", err),
 								slog.String("device", input.Mac))
 
@@ -1304,9 +1295,9 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 									Mac:          input.Mac,
 									Availability: models.StatusOffline,
 								}
-								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
+								err = s.UpdateDeviceAvailability(ctx, updateDeviceAvailabilityInput)
 								if err != nil {
-									logger.ErrorContext(ctx, "failed to update device availability",
+									s.logger.ErrorContext(ctx, "failed to update device availability",
 										slog.Any("err", err),
 										slog.String("device", input.Mac),
 										slog.Any("input", updateDeviceAvailabilityInput))
@@ -1323,9 +1314,9 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 									Mac:          input.Mac,
 									Availability: models.StatusOnline,
 								}
-								err = s.UpdateDeviceAvailability(ctx, logger, updateDeviceAvailabilityInput)
+								err = s.UpdateDeviceAvailability(ctx, updateDeviceAvailabilityInput)
 								if err != nil {
-									logger.ErrorContext(ctx, "failed to update device availability",
+									s.logger.ErrorContext(ctx, "failed to update device availability",
 										slog.Any("err", err),
 										slog.String("device", input.Mac),
 										slog.Any("input", updateDeviceAvailabilityInput))
@@ -1351,9 +1342,9 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 						Temperature: temperature,
 						IsDisplayOn: isDisplayOn,
 					}
-					err := s.UpdateDeviceStates(ctx, logger, updateDeviceStatesInput)
+					err := s.UpdateDeviceStates(ctx, updateDeviceStatesInput)
 					if err != nil {
-						logger.ErrorContext(ctx, "failed to update device states",
+						s.logger.ErrorContext(ctx, "failed to update device states",
 							slog.Any("err", err),
 							slog.String("device", input.Mac),
 							slog.Any("input", updateDeviceStatesInput))
@@ -1387,14 +1378,14 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, logger *slog.Logger
 	}
 }
 
-func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logger *slog.Logger, input *models.PublishStatesOnHomeAssistantRestartInput) error {
+func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input *models.PublishStatesOnHomeAssistantRestartInput) error {
 	if input.Status != models.StatusOnline {
 		return nil
 	}
 
-	readAuthedDevicesReturn, err := s.cache.ReadAuthedDevices(ctx, logger)
+	readAuthedDevicesReturn, err := s.cache.ReadAuthedDevices(ctx)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to read authed devices",
+		s.logger.ErrorContext(ctx, "failed to read authed devices",
 			slog.Any("err", err))
 		return err
 	}
@@ -1409,9 +1400,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 			readDeviceStatusRawInput := &models_repo.ReadDeviceStatusRawInput{
 				Mac: mac,
 			}
-			readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(gCtx, logger, readDeviceStatusRawInput)
+			readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(gCtx, readDeviceStatusRawInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to read the device status",
+				s.logger.ErrorContext(gCtx, "failed to read the device status",
 					slog.Any("err", err),
 					slog.Any("input", readDeviceStatusRawInput))
 				return err
@@ -1421,9 +1412,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 
 			readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: mac}
 
-			readAmbientTempReturn, err := s.cache.ReadAmbientTemp(gCtx, logger, readAmbientTempInput)
+			readAmbientTempReturn, err := s.cache.ReadAmbientTemp(gCtx, readAmbientTempInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to read the ambient temperature",
+				s.logger.ErrorContext(gCtx, "failed to read the ambient temperature",
 					slog.Any("err", err),
 					slog.Any("input", readAmbientTempInput))
 				return err
@@ -1431,9 +1422,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 
 			readDeviceAvailabilityInput := &models_repo.ReadDeviceAvailabilityInput{Mac: mac}
 
-			readDeviceAvailabilityReturn, err := s.cache.ReadDeviceAvailability(gCtx, logger, readDeviceAvailabilityInput)
+			readDeviceAvailabilityReturn, err := s.cache.ReadDeviceAvailability(gCtx, readDeviceAvailabilityInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to read the device availability",
+				s.logger.ErrorContext(gCtx, "failed to read the device availability",
 					slog.Any("err", err),
 					slog.Any("input", readDeviceAvailabilityInput))
 				return err
@@ -1442,9 +1433,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 			readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
 				Mac: mac,
 			}
-			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(gCtx, logger, readDeviceConfigInput)
+			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(gCtx, readDeviceConfigInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to read device config",
+				s.logger.ErrorContext(gCtx, "failed to read device config",
 					slog.Any("err", err),
 					slog.Any("input", readDeviceConfigInput))
 				return err
@@ -1454,9 +1445,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 			// 		Publish all topics     //
 			/////////////////////////////////
 
-			err = s.PublishDiscoveryTopic(gCtx, logger, &models.PublishDiscoveryTopicInput{Device: models.DeviceConfig(readDeviceConfigReturn.Config)})
+			err = s.PublishDiscoveryTopic(gCtx, &models.PublishDiscoveryTopicInput{Device: models.DeviceConfig(readDeviceConfigReturn.Config)})
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the discovery topic",
+				s.logger.ErrorContext(gCtx, "failed to publish the discovery topic",
 					slog.Any("err", err),
 					slog.Any("input", readDeviceConfigReturn.Config))
 				return err
@@ -1468,9 +1459,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:          mac,
 				Availability: readDeviceAvailabilityReturn.Availability,
 			}
-			err = s.mqtt.PublishAvailability(gCtx, logger, publishAvailabilityInput)
+			err = s.mqtt.PublishAvailability(gCtx, publishAvailabilityInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish device availability",
+				s.logger.ErrorContext(gCtx, "failed to publish device availability",
 					slog.Any("err", err),
 					slog.Any("input", publishAvailabilityInput))
 				return err
@@ -1481,9 +1472,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:         mac,
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readAmbientTempReturn.Temperature),
 			}
-			err = s.mqtt.PublishAmbientTemp(gCtx, logger, publishAmbientTempInput)
+			err = s.mqtt.PublishAmbientTemp(gCtx, publishAmbientTempInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish ambient temperature",
+				s.logger.ErrorContext(gCtx, "failed to publish ambient temperature",
 					slog.Any("err", err),
 					slog.Any("input", publishAmbientTempInput))
 				return err
@@ -1493,9 +1484,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:         mac,
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readDeviceStatusRawReturn.Status.Temperature),
 			}
-			err = s.mqtt.PublishTemperature(gCtx, logger, publishTemperatureInput)
+			err = s.mqtt.PublishTemperature(gCtx, publishTemperatureInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device set temperature",
+				s.logger.ErrorContext(gCtx, "failed to publish the device set temperature",
 					slog.Any("err", err),
 					slog.Any("input", publishTemperatureInput))
 				return err
@@ -1505,9 +1496,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:  mac,
 				Mode: hassStatus.Mode,
 			}
-			err = s.mqtt.PublishMode(gCtx, logger, publishModeInput)
+			err = s.mqtt.PublishMode(gCtx, publishModeInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device mode",
+				s.logger.ErrorContext(gCtx, "failed to publish the device mode",
 					slog.Any("err", err),
 					slog.Any("input", publishModeInput))
 				return err
@@ -1517,9 +1508,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:     mac,
 				FanMode: hassStatus.FanMode,
 			}
-			err = s.mqtt.PublishFanMode(gCtx, logger, publishFanModeInput)
+			err = s.mqtt.PublishFanMode(gCtx, publishFanModeInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device fan mode",
+				s.logger.ErrorContext(gCtx, "failed to publish the device fan mode",
 					slog.Any("err", err),
 					slog.Any("input", publishFanModeInput))
 				return err
@@ -1529,9 +1520,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:       mac,
 				SwingMode: hassStatus.SwingMode,
 			}
-			err = s.mqtt.PublishSwingMode(gCtx, logger, publishSwingModeInput)
+			err = s.mqtt.PublishSwingMode(gCtx, publishSwingModeInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the device swing mode",
+				s.logger.ErrorContext(gCtx, "failed to publish the device swing mode",
 					slog.Any("err", err),
 					slog.Any("input", publishSwingModeInput))
 				return err
@@ -1541,9 +1532,9 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, logge
 				Mac:    mac,
 				Status: hassStatus.DisplaySwitch,
 			}
-			err = s.mqtt.PublishDisplaySwitch(gCtx, logger, publishDisplaySwitchInput)
+			err = s.mqtt.PublishDisplaySwitch(gCtx, publishDisplaySwitchInput)
 			if err != nil {
-				logger.ErrorContext(gCtx, "failed to publish the display switch status",
+				s.logger.ErrorContext(gCtx, "failed to publish the display switch status",
 					slog.Any("err", err),
 					slog.Any("input", publishDisplaySwitchInput))
 				return err

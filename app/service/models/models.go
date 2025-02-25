@@ -18,7 +18,7 @@ type DeviceConfig struct {
 	TemperatureUnit string
 }
 
-func (input DeviceConfig) Validate() error {
+func (input *DeviceConfig) Validate() error {
 	if len(input.Mac) != 12 {
 		return errors.New("mac address is wrong")
 	}
@@ -155,7 +155,7 @@ type UpdateFanModeInput struct {
 	FanMode string
 }
 
-func (input UpdateFanModeInput) Validate() error {
+func (input *UpdateFanModeInput) Validate() error {
 	var fanModes = []string{"auto", "low", "medium", "high", "turbo", "mute"}
 
 	for _, fanMode := range fanModes {
@@ -189,7 +189,7 @@ type UpdateSwingModeInput struct {
 	SwingMode string
 }
 
-func (input UpdateSwingModeInput) Validate() error {
+func (input *UpdateSwingModeInput) Validate() error {
 	_, ok := VerticalFixationStatusesInvert[input.SwingMode]
 	if !ok {
 		return ErrorInvalidParameterSwingMode
