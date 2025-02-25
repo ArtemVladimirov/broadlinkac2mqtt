@@ -83,6 +83,18 @@ Install Add-On:
 
 Download application from releases or build it with command "go build". Then you can run a program. The config folder must be located in the program folder
 
+## Known issues
+
+### Checksum is incorrect 
+ 
+
+> [@cHunter789](https://github.com/ArtemVladimirov/broadlinkac2mqtt/issues/6#issuecomment-2308999367) wrote:
+>
+> if there is a problem with checksum you have to remove the device from ac freedom app, reset wifi and after the wifi is connected once again (in the ac freedom app) just cancel and you will get connection. If it's still 
+> not working, just take a look at [a hardware approach](https://github.com/GrKoR/esphome_aux_ac_component/blob/06388ebb2c2792098e93dd844c3c812440a06288/README-EN.md#esphome-aux-air-conditioner-custom-component-aux_ac)
+
+OR your device is not supported. 
+
 ## Support
 
 To motivate the developer, click on the STAR ⭐. I will be very happy!
