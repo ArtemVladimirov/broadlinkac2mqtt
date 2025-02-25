@@ -44,7 +44,7 @@ func (m *mqttPublisher) PublishClimateDiscoveryTopic(ctx context.Context, input 
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -66,7 +66,7 @@ func (m *mqttPublisher) PublishSwitchDiscoveryTopic(ctx context.Context, input m
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -78,7 +78,7 @@ func (m *mqttPublisher) PublishAmbientTemp(ctx context.Context, input *models.Pu
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -90,7 +90,7 @@ func (m *mqttPublisher) PublishTemperature(ctx context.Context, input *models.Pu
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -102,7 +102,7 @@ func (m *mqttPublisher) PublishMode(ctx context.Context, input *models.PublishMo
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -114,7 +114,7 @@ func (m *mqttPublisher) PublishSwingMode(ctx context.Context, input *models.Publ
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -126,7 +126,7 @@ func (m *mqttPublisher) PublishFanMode(ctx context.Context, input *models.Publis
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -138,7 +138,7 @@ func (m *mqttPublisher) PublishAvailability(ctx context.Context, input *models.P
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
 
@@ -150,6 +150,6 @@ func (m *mqttPublisher) PublishDisplaySwitch(ctx context.Context, input *models.
 	case <-ctx.Done():
 		return nil
 	case <-token.Done():
-		return nil
+		return token.Error()
 	}
 }
