@@ -26,7 +26,12 @@ func (w *webClient) SendCommand(ctx context.Context, input *models.SendCommandIn
 		w.logger.ErrorContext(ctx, "Failed to dial address", slog.Any("err", err))
 		return nil, err
 	}
-	defer conn.Close()
+	defer func(conn net.Conn) {
+		err = conn.Close()
+		if err != nil {
+			w.logger.ErrorContext(ctx, "Failed to close client connection", slog.Any("err", err))
+		}
+	}(conn)
 
 	err = conn.SetDeadline(time.Now().Add(time.Second * 10))
 	if err != nil {

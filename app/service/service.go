@@ -134,7 +134,7 @@ func (s *service) AuthDevice(ctx context.Context, input *models.AuthDeviceInput)
 		Payload: payload[:],
 		Mac:     input.Mac,
 	}
-	response, err := s.SendCommand(ctx, sendCommandInput)
+	response, err := s.sendCommand(ctx, sendCommandInput)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to send command", slog.Any("err", err), slog.Any("input", input))
 		return err
@@ -215,7 +215,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 		Payload: []byte{12, 0, 187, 0, 6, 128, 0, 0, 2, 0, 33, 1, 27, 126, 0, 0},
 		Mac:     input.Mac,
 	}
-	response, err := s.SendCommand(ctx, sendCommandInput)
+	response, err := s.sendCommand(ctx, sendCommandInput)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to send a command", slog.Any("err", err), slog.Any("input", sendCommandInput))
 		return err
@@ -333,7 +333,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 		Mac:     input.Mac,
 	}
 
-	response, err := s.SendCommand(ctx, sendCommandInput)
+	response, err := s.sendCommand(ctx, sendCommandInput)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to send the command to get states",
 			slog.Any("input", sendCommandInput),
@@ -588,7 +588,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	return nil
 }
 
-func (s *service) SendCommand(ctx context.Context, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
+func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
 	// Read the saved value in repo if no
 	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
 		Mac: input.Mac,
@@ -1162,7 +1162,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, input *models.UpdateDe
 		Payload: payloadChecksum[:],
 		Mac:     input.Mac,
 	}
-	_, err = s.SendCommand(ctx, sendCommandInput)
+	_, err = s.sendCommand(ctx, sendCommandInput)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to send a set command",
 			slog.Any("err", err),
