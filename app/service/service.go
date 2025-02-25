@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
-	models_mqtt "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
-	models_repo "github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
+	modelsMqtt "github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
+	modelsRepo "github.com/ArtemVladimirov/broadlinkac2mqtt/app/repository/models"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
-	models_web "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
+	modelsWeb "github.com/ArtemVladimirov/broadlinkac2mqtt/app/webClient/models"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/pkg/coder"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/pkg/converter"
 	"golang.org/x/sync/errgroup"
@@ -43,15 +43,15 @@ func (s *service) CreateDevice(ctx context.Context, input *models.CreateDeviceIn
 	iv := []byte{0x56, 0x2e, 0x17, 0x99, 0x6d, 0x09, 0x3d, 0x28, 0xdd, 0xb3, 0xba, 0x69, 0x5a, 0x2e, 0x6f, 0x58}
 
 	// Store device information in the repository
-	upsertDeviceConfigInput := &models_repo.UpsertDeviceConfigInput{
-		Config: models_repo.DeviceConfig(input.Config),
+	upsertDeviceConfigInput := &modelsRepo.UpsertDeviceConfigInput{
+		Config: modelsRepo.DeviceConfig(input.Config),
 	}
 	err := s.cache.UpsertDeviceConfig(ctx, upsertDeviceConfigInput)
 	if err != nil {
 		return err
 	}
 
-	auth := models_repo.DeviceAuth{
+	auth := modelsRepo.DeviceAuth{
 		LastMessageId: rand.Intn(0xffff),
 		DevType:       0x4E2a,
 		Id:            [4]byte{0, 0, 0, 0},
@@ -60,7 +60,7 @@ func (s *service) CreateDevice(ctx context.Context, input *models.CreateDeviceIn
 	}
 
 	// Store device information in the repository
-	upsertDeviceAuthInput := &models_repo.UpsertDeviceAuthInput{
+	upsertDeviceAuthInput := &modelsRepo.UpsertDeviceAuthInput{
 		Mac:  input.Config.Mac,
 		Auth: auth,
 	}
@@ -150,7 +150,7 @@ func (s *service) AuthDevice(ctx context.Context, input *models.AuthDeviceInput)
 	}
 
 	// Read the saved value in repo if no
-	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
+	readDeviceAuthInput := &modelsRepo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
 	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
@@ -166,7 +166,7 @@ func (s *service) AuthDevice(ctx context.Context, input *models.AuthDeviceInput)
 		return err
 	}
 
-	auth = models_repo.DeviceAuth{
+	auth = modelsRepo.DeviceAuth{
 		LastMessageId: auth.LastMessageId,
 		DevType:       auth.DevType,
 		Id:            [4]byte{response.Payload[0], response.Payload[1], response.Payload[2], response.Payload[3]},
@@ -175,7 +175,7 @@ func (s *service) AuthDevice(ctx context.Context, input *models.AuthDeviceInput)
 	}
 
 	// Update the last message id in the cache
-	upsertDeviceAuthInput := &models_repo.UpsertDeviceAuthInput{
+	upsertDeviceAuthInput := &modelsRepo.UpsertDeviceAuthInput{
 		Mac:  input.Mac,
 		Auth: auth,
 	}
@@ -235,7 +235,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 	}
 
 	// Read the saved value in repo if no
-	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
+	readDeviceAuthInput := &modelsRepo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
 	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
@@ -259,11 +259,11 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 
 	ambientTemp := float32(response.Payload[15]-0b00100000) + (float32(response.Payload[31]) / 10)
 
-	readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: input.Mac}
+	readAmbientTempInput := &modelsRepo.ReadAmbientTempInput{Mac: input.Mac}
 	readAmbientTempReturn, err := s.cache.ReadAmbientTemp(ctx, readAmbientTempInput)
 	if err != nil {
 		switch err {
-		case models_repo.ErrorDeviceStatusAmbientTempNotFound:
+		case modelsRepo.ErrorDeviceStatusAmbientTempNotFound:
 			err = nil
 		default:
 			s.logger.ErrorContext(ctx, "failed to read the ambient temperature",
@@ -286,7 +286,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 		slog.String("device", input.Mac))
 
 	if readAmbientTempReturn == nil || readAmbientTempReturn.Temperature != ambientTemp {
-		readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+		readDeviceConfigInput := &modelsRepo.ReadDeviceConfigInput{
 			Mac: input.Mac,
 		}
 		readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, readDeviceConfigInput)
@@ -299,7 +299,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 		}
 
 		// Sent  temperature to MQTT
-		publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
+		publishAmbientTempInput := &modelsMqtt.PublishAmbientTempInput{
 			Mac:         input.Mac,
 			Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, ambientTemp),
 		}
@@ -312,7 +312,7 @@ func (s *service) GetDeviceAmbientTemperature(ctx context.Context, input *models
 		}
 
 		// Save the new value in storage
-		upsertAmbientTempInput := &models_repo.UpsertAmbientTempInput{Temperature: ambientTemp, Mac: input.Mac}
+		upsertAmbientTempInput := &modelsRepo.UpsertAmbientTempInput{Temperature: ambientTemp, Mac: input.Mac}
 		err = s.cache.UpsertAmbientTemp(ctx, upsertAmbientTempInput)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "failed to upsert the temperature",
@@ -352,7 +352,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	}
 
 	// Read the saved value in repo if no
-	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
+	readDeviceAuthInput := &modelsRepo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
 	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
@@ -429,14 +429,14 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	//  Compare new statuses with old statuses and update  MQTT     //
 	//////////////////////////////////////////////////////////////////
 
-	readDeviceStatusRawInput := &models_repo.ReadDeviceStatusRawInput{
+	readDeviceStatusRawInput := &modelsRepo.ReadDeviceStatusRawInput{
 		Mac: input.Mac,
 	}
 
 	readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(ctx, readDeviceStatusRawInput)
 	if err != nil {
 		switch err {
-		case models_repo.ErrorDeviceStatusRawNotFound:
+		case modelsRepo.ErrorDeviceStatusRawNotFound:
 			err = nil
 		default:
 			s.logger.ErrorContext(ctx, "failed to read the device status",
@@ -455,7 +455,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 		if readDeviceStatusRawReturn == nil ||
 			readDeviceStatusRawReturn.Status.Temperature != raw.Temperature {
 
-			readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+			readDeviceConfigInput := &modelsRepo.ReadDeviceConfigInput{
 				Mac: input.Mac,
 			}
 
@@ -468,7 +468,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 				return err
 			}
 
-			publishTemperatureInput := &models_mqtt.PublishTemperatureInput{
+			publishTemperatureInput := &modelsMqtt.PublishTemperatureInput{
 				Mac:         input.Mac,
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, deviceStatusHass.Temperature),
 			}
@@ -489,7 +489,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 			readDeviceStatusRawReturn.Status.Mode != raw.Mode ||
 			readDeviceStatusRawReturn.Status.Power != raw.Power {
 
-			publishModeInput := &models_mqtt.PublishModeInput{
+			publishModeInput := &modelsMqtt.PublishModeInput{
 				Mac:  input.Mac,
 				Mode: deviceStatusHass.Mode,
 			}
@@ -510,7 +510,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 			readDeviceStatusRawReturn.Status.Mute != raw.Mute ||
 			readDeviceStatusRawReturn.Status.Turbo != raw.Turbo {
 
-			publishFanModeInput := &models_mqtt.PublishFanModeInput{
+			publishFanModeInput := &modelsMqtt.PublishFanModeInput{
 				Mac:     input.Mac,
 				FanMode: deviceStatusHass.FanMode,
 			}
@@ -529,7 +529,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	g.Go(func() error {
 		if readDeviceStatusRawReturn == nil ||
 			readDeviceStatusRawReturn.Status.FixationVertical != raw.FixationVertical {
-			publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
+			publishSwingModeInput := &modelsMqtt.PublishSwingModeInput{
 				Mac:       input.Mac,
 				SwingMode: deviceStatusHass.SwingMode,
 			}
@@ -548,7 +548,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	g.Go(func() error {
 		if readDeviceStatusRawReturn == nil ||
 			readDeviceStatusRawReturn.Status.Display != raw.Display {
-			publishDisplaySwitchInput := &models_mqtt.PublishDisplaySwitchInput{
+			publishDisplaySwitchInput := &modelsMqtt.PublishDisplaySwitchInput{
 				Mac:    input.Mac,
 				Status: deviceStatusHass.DisplaySwitch,
 			}
@@ -573,9 +573,9 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 	//  		Update device states in the database                //
 	//////////////////////////////////////////////////////////////////
 
-	upsertDeviceStatusRawInput := &models_repo.UpsertDeviceStatusRawInput{
+	upsertDeviceStatusRawInput := &modelsRepo.UpsertDeviceStatusRawInput{
 		Mac:    input.Mac,
-		Status: models_repo.DeviceStatusRaw(raw),
+		Status: modelsRepo.DeviceStatusRaw(raw),
 	}
 
 	err = s.cache.UpsertDeviceStatusRaw(ctx, upsertDeviceStatusRawInput)
@@ -590,7 +590,7 @@ func (s *service) GetDeviceStates(ctx context.Context, input *models.GetDeviceSt
 
 func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInput) (*models.SendCommandReturn, error) {
 	// Read the saved value in repo if no
-	readDeviceAuthInput := &models_repo.ReadDeviceAuthInput{
+	readDeviceAuthInput := &modelsRepo.ReadDeviceAuthInput{
 		Mac: input.Mac,
 	}
 	readDeviceAuthReturn, err := s.cache.ReadDeviceAuth(ctx, readDeviceAuthInput)
@@ -676,7 +676,7 @@ func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInpu
 	packetSlice[0x21] = byte(checksum >> 8)
 
 	// Update last message id in database
-	upsertDeviceAuthInput := &models_repo.UpsertDeviceAuthInput{
+	upsertDeviceAuthInput := &modelsRepo.UpsertDeviceAuthInput{
 		Mac:  input.Mac,
 		Auth: auth,
 	}
@@ -691,7 +691,7 @@ func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInpu
 		slog.Any("input", packetSlice))
 
 	// Read config to get IP and Port
-	readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+	readDeviceConfigInput := &modelsRepo.ReadDeviceConfigInput{
 		Mac: input.Mac,
 	}
 
@@ -705,7 +705,7 @@ func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInpu
 	}
 
 	// Send the packet
-	sendCommandInput := &models_web.SendCommandInput{
+	sendCommandInput := &modelsWeb.SendCommandInput{
 		Payload: packetSlice,
 		Ip:      readDeviceConfigReturn.Config.Ip,
 		Port:    readDeviceConfigReturn.Config.Port,
@@ -726,7 +726,7 @@ func (s *service) sendCommand(ctx context.Context, input *models.SendCommandInpu
 func (s *service) PublishDiscoveryTopic(ctx context.Context, input *models.PublishDiscoveryTopicInput) error {
 	prefix := s.topicPrefix + "/" + input.Device.Mac
 
-	device := models_mqtt.DiscoveryTopicDevice{
+	device := modelsMqtt.DiscoveryTopicDevice{
 		Model: "AirCon",
 		Mf:    "broadlink",
 		Sw:    "v1.5.3",
@@ -734,7 +734,7 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, input *models.Publi
 		Name:  input.Device.Name,
 	}
 
-	availability := models_mqtt.DiscoveryTopicAvailability{
+	availability := modelsMqtt.DiscoveryTopicAvailability{
 		PayloadAvailable:    models.StatusOnline,
 		PayloadNotAvailable: models.StatusOffline,
 		Topic:               prefix + "/availability/value",
@@ -745,8 +745,8 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, input *models.Publi
 		swingModes = append(swingModes, swingMode)
 	}
 
-	publishClimateDiscoveryTopicInput := models_mqtt.PublishClimateDiscoveryTopicInput{
-		Topic: models_mqtt.ClimateDiscoveryTopic{
+	publishClimateDiscoveryTopicInput := modelsMqtt.PublishClimateDiscoveryTopicInput{
+		Topic: modelsMqtt.ClimateDiscoveryTopic{
 			FanModeCommandTopic:     prefix + "/fan_mode/set",
 			FanModes:                []string{"auto", "low", "medium", "high", "turbo", "mute"},
 			FanModeStateTopic:       prefix + "/fan_mode/value",
@@ -776,8 +776,8 @@ func (s *service) PublishDiscoveryTopic(ctx context.Context, input *models.Publi
 		return err
 	}
 
-	publishSwitchScreenDiscoveryTopicInput := models_mqtt.PublishSwitchDiscoveryTopicInput{
-		Topic: models_mqtt.SwitchDiscoveryTopic{
+	publishSwitchScreenDiscoveryTopicInput := modelsMqtt.PublishSwitchDiscoveryTopicInput{
+		Topic: modelsMqtt.SwitchDiscoveryTopic{
 			Device:       device,
 			Name:         "Screen",
 			UniqueId:     input.Device.Mac + "_screen",
@@ -801,9 +801,9 @@ func (s *service) UpdateFanMode(ctx context.Context, input *models.UpdateFanMode
 		return err
 	}
 
-	upsertMqttFanModeMessageInput := &models_repo.UpsertMqttFanModeMessageInput{
+	upsertMqttFanModeMessageInput := &modelsRepo.UpsertMqttFanModeMessageInput{
 		Mac: input.Mac,
-		FanMode: models_repo.MqttFanModeMessage{
+		FanMode: modelsRepo.MqttFanModeMessage{
 			UpdatedAt: time.Now(),
 			FanMode:   input.FanMode,
 		},
@@ -818,7 +818,7 @@ func (s *service) UpdateFanMode(ctx context.Context, input *models.UpdateFanMode
 		return err
 	}
 
-	publishFanModeInput := &models_mqtt.PublishFanModeInput{
+	publishFanModeInput := &modelsMqtt.PublishFanModeInput{
 		Mac:     input.Mac,
 		FanMode: input.FanMode,
 	}
@@ -844,9 +844,9 @@ func (s *service) UpdateMode(ctx context.Context, input *models.UpdateModeInput)
 		return err
 	}
 
-	upsertMqttModeMessageInput := &models_repo.UpsertMqttModeMessageInput{
+	upsertMqttModeMessageInput := &modelsRepo.UpsertMqttModeMessageInput{
 		Mac: input.Mac,
-		Mode: models_repo.MqttModeMessage{
+		Mode: modelsRepo.MqttModeMessage{
 			UpdatedAt: time.Now(),
 			Mode:      input.Mode,
 		},
@@ -861,7 +861,7 @@ func (s *service) UpdateMode(ctx context.Context, input *models.UpdateModeInput)
 		return err
 	}
 
-	publishModeInput := &models_mqtt.PublishModeInput{
+	publishModeInput := &modelsMqtt.PublishModeInput{
 		Mac:  input.Mac,
 		Mode: input.Mode,
 	}
@@ -887,9 +887,9 @@ func (s *service) UpdateSwingMode(ctx context.Context, input *models.UpdateSwing
 		return err
 	}
 
-	upsertMqttSwingModeMessageInput := &models_repo.UpsertMqttSwingModeMessageInput{
+	upsertMqttSwingModeMessageInput := &modelsRepo.UpsertMqttSwingModeMessageInput{
 		Mac: input.Mac,
-		SwingMode: models_repo.MqttSwingModeMessage{
+		SwingMode: modelsRepo.MqttSwingModeMessage{
 			UpdatedAt: time.Now(),
 			SwingMode: input.SwingMode,
 		},
@@ -904,7 +904,7 @@ func (s *service) UpdateSwingMode(ctx context.Context, input *models.UpdateSwing
 		return err
 	}
 
-	publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
+	publishSwingModeInput := &modelsMqtt.PublishSwingModeInput{
 		Mac:       input.Mac,
 		SwingMode: input.SwingMode,
 	}
@@ -921,7 +921,7 @@ func (s *service) UpdateSwingMode(ctx context.Context, input *models.UpdateSwing
 }
 
 func (s *service) UpdateTemperature(ctx context.Context, input *models.UpdateTemperatureInput) error {
-	readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+	readDeviceConfigInput := &modelsRepo.ReadDeviceConfigInput{
 		Mac: input.Mac,
 	}
 	readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(ctx, readDeviceConfigInput)
@@ -943,9 +943,9 @@ func (s *service) UpdateTemperature(ctx context.Context, input *models.UpdateTem
 		return err
 	}
 
-	upsertMqttTemperatureMessageInput := &models_repo.UpsertMqttTemperatureMessageInput{
+	upsertMqttTemperatureMessageInput := &modelsRepo.UpsertMqttTemperatureMessageInput{
 		Mac: input.Mac,
-		Temperature: models_repo.MqttTemperatureMessage{
+		Temperature: modelsRepo.MqttTemperatureMessage{
 			UpdatedAt:   time.Now(),
 			Temperature: input.Temperature,
 		},
@@ -973,9 +973,9 @@ func (s *service) UpdateDisplaySwitch(ctx context.Context, input *models.UpdateD
 		return err
 	}
 
-	upsertDisplaySwitchMessageInput := &models_repo.UpsertMqttDisplaySwitchMessageInput{
+	upsertDisplaySwitchMessageInput := &modelsRepo.UpsertMqttDisplaySwitchMessageInput{
 		Mac: input.Mac,
-		DisplaySwitch: models_repo.MqttDisplaySwitchMessage{
+		DisplaySwitch: modelsRepo.MqttDisplaySwitchMessage{
 			UpdatedAt:   time.Now(),
 			IsDisplayOn: input.Status == "ON",
 		},
@@ -994,7 +994,7 @@ func (s *service) UpdateDisplaySwitch(ctx context.Context, input *models.UpdateD
 }
 
 func (s *service) UpdateDeviceStates(ctx context.Context, input *models.UpdateDeviceStatesInput) error {
-	readDeviceStatusRawInput := &models_repo.ReadDeviceStatusRawInput{
+	readDeviceStatusRawInput := &modelsRepo.ReadDeviceStatusRawInput{
 		Mac: input.Mac,
 	}
 
@@ -1175,7 +1175,7 @@ func (s *service) UpdateDeviceStates(ctx context.Context, input *models.UpdateDe
 }
 
 func (s *service) UpdateDeviceAvailability(ctx context.Context, input *models.UpdateDeviceAvailabilityInput) error {
-	upsertDeviceAvailabilityInput := &models_repo.UpsertDeviceAvailabilityInput{
+	upsertDeviceAvailabilityInput := &modelsRepo.UpsertDeviceAvailabilityInput{
 		Mac:          input.Mac,
 		Availability: input.Availability,
 	}
@@ -1188,7 +1188,7 @@ func (s *service) UpdateDeviceAvailability(ctx context.Context, input *models.Up
 		return err
 	}
 
-	publishAvailabilityInput := &models_mqtt.PublishAvailabilityInput{
+	publishAvailabilityInput := &modelsMqtt.PublishAvailabilityInput{
 		Mac:          input.Mac,
 		Availability: input.Availability,
 	}
@@ -1237,7 +1237,7 @@ func (s *service) StartDeviceMonitoring(ctx context.Context, input *models.Start
 					isDisplayOn              *bool
 				)
 
-				readMqttMessageInput := &models_repo.ReadMqttMessageInput{
+				readMqttMessageInput := &modelsRepo.ReadMqttMessageInput{
 					Mac: input.Mac,
 				}
 				message, err := s.cache.ReadMqttMessage(ctx, readMqttMessageInput)
@@ -1397,7 +1397,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 			// Read all states and configs //
 			/////////////////////////////////
 
-			readDeviceStatusRawInput := &models_repo.ReadDeviceStatusRawInput{
+			readDeviceStatusRawInput := &modelsRepo.ReadDeviceStatusRawInput{
 				Mac: mac,
 			}
 			readDeviceStatusRawReturn, err := s.cache.ReadDeviceStatusRaw(gCtx, readDeviceStatusRawInput)
@@ -1410,7 +1410,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 
 			hassStatus := models.DeviceStatusRaw(readDeviceStatusRawReturn.Status).ConvertToDeviceStatusHass()
 
-			readAmbientTempInput := &models_repo.ReadAmbientTempInput{Mac: mac}
+			readAmbientTempInput := &modelsRepo.ReadAmbientTempInput{Mac: mac}
 
 			readAmbientTempReturn, err := s.cache.ReadAmbientTemp(gCtx, readAmbientTempInput)
 			if err != nil {
@@ -1420,7 +1420,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			readDeviceAvailabilityInput := &models_repo.ReadDeviceAvailabilityInput{Mac: mac}
+			readDeviceAvailabilityInput := &modelsRepo.ReadDeviceAvailabilityInput{Mac: mac}
 
 			readDeviceAvailabilityReturn, err := s.cache.ReadDeviceAvailability(gCtx, readDeviceAvailabilityInput)
 			if err != nil {
@@ -1430,7 +1430,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			readDeviceConfigInput := &models_repo.ReadDeviceConfigInput{
+			readDeviceConfigInput := &modelsRepo.ReadDeviceConfigInput{
 				Mac: mac,
 			}
 			readDeviceConfigReturn, err := s.cache.ReadDeviceConfig(gCtx, readDeviceConfigInput)
@@ -1455,7 +1455,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 
 			time.Sleep(time.Millisecond * 500)
 
-			publishAvailabilityInput := &models_mqtt.PublishAvailabilityInput{
+			publishAvailabilityInput := &modelsMqtt.PublishAvailabilityInput{
 				Mac:          mac,
 				Availability: readDeviceAvailabilityReturn.Availability,
 			}
@@ -1468,7 +1468,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 			}
 
 			// Send  temperature to MQTT
-			publishAmbientTempInput := &models_mqtt.PublishAmbientTempInput{
+			publishAmbientTempInput := &modelsMqtt.PublishAmbientTempInput{
 				Mac:         mac,
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readAmbientTempReturn.Temperature),
 			}
@@ -1480,7 +1480,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			publishTemperatureInput := &models_mqtt.PublishTemperatureInput{
+			publishTemperatureInput := &modelsMqtt.PublishTemperatureInput{
 				Mac:         mac,
 				Temperature: converter.Temperature(models.Celsius, readDeviceConfigReturn.Config.TemperatureUnit, readDeviceStatusRawReturn.Status.Temperature),
 			}
@@ -1492,7 +1492,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			publishModeInput := &models_mqtt.PublishModeInput{
+			publishModeInput := &modelsMqtt.PublishModeInput{
 				Mac:  mac,
 				Mode: hassStatus.Mode,
 			}
@@ -1504,7 +1504,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			publishFanModeInput := &models_mqtt.PublishFanModeInput{
+			publishFanModeInput := &modelsMqtt.PublishFanModeInput{
 				Mac:     mac,
 				FanMode: hassStatus.FanMode,
 			}
@@ -1516,7 +1516,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			publishSwingModeInput := &models_mqtt.PublishSwingModeInput{
+			publishSwingModeInput := &modelsMqtt.PublishSwingModeInput{
 				Mac:       mac,
 				SwingMode: hassStatus.SwingMode,
 			}
@@ -1528,7 +1528,7 @@ func (s *service) PublishStatesOnHomeAssistantRestart(ctx context.Context, input
 				return err
 			}
 
-			publishDisplaySwitchInput := &models_mqtt.PublishDisplaySwitchInput{
+			publishDisplaySwitchInput := &modelsMqtt.PublishDisplaySwitchInput{
 				Mac:    mac,
 				Status: hassStatus.DisplaySwitch,
 			}

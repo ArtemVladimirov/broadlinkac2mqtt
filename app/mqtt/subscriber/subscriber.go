@@ -8,7 +8,7 @@ import (
 
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app"
 	"github.com/ArtemVladimirov/broadlinkac2mqtt/app/mqtt/models"
-	models_service "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
+	modelsservice "github.com/ArtemVladimirov/broadlinkac2mqtt/app/service/models"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -35,7 +35,7 @@ func (m *mqttSubscriber) UpdateFanModeCommandTopic(ctx context.Context) mqtt.Mes
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
 
-		updateFanModeInput := &models_service.UpdateFanModeInput{
+		updateFanModeInput := &modelsservice.UpdateFanModeInput{
 			Mac:     mac,
 			FanMode: string(msg.Payload()),
 		}
@@ -57,7 +57,7 @@ func (m *mqttSubscriber) UpdateSwingModeCommandTopic(ctx context.Context) mqtt.M
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
 
-		updateSwingModeInput := &models_service.UpdateSwingModeInput{
+		updateSwingModeInput := &modelsservice.UpdateSwingModeInput{
 			Mac:       mac,
 			SwingMode: string(msg.Payload()),
 		}
@@ -79,7 +79,7 @@ func (m *mqttSubscriber) UpdateModeCommandTopic(ctx context.Context) mqtt.Messag
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
 
-		updateModeInput := &models_service.UpdateModeInput{
+		updateModeInput := &modelsservice.UpdateModeInput{
 			Mac:  mac,
 			Mode: string(msg.Payload()),
 		}
@@ -107,7 +107,7 @@ func (m *mqttSubscriber) UpdateTemperatureCommandTopic(ctx context.Context) mqtt
 			return
 		}
 
-		updateTemperatureInput := &models_service.UpdateTemperatureInput{
+		updateTemperatureInput := &modelsservice.UpdateTemperatureInput{
 			Mac:         mac,
 			Temperature: float32(temperature),
 		}
@@ -126,7 +126,7 @@ func (m *mqttSubscriber) GetStatesOnHomeAssistantRestart(ctx context.Context) mq
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
 
-		getStatesOnHomeAssistantRestartInput := &models_service.PublishStatesOnHomeAssistantRestartInput{
+		getStatesOnHomeAssistantRestartInput := &modelsservice.PublishStatesOnHomeAssistantRestartInput{
 			Status: string(msg.Payload()),
 		}
 
@@ -147,7 +147,7 @@ func (m *mqttSubscriber) UpdateDisplaySwitchCommandTopic(ctx context.Context) mq
 			slog.String("payload", string(msg.Payload())),
 			slog.String("topic", msg.Topic()))
 
-		updateDisplaySwitchInput := &models_service.UpdateDisplaySwitchInput{
+		updateDisplaySwitchInput := &modelsservice.UpdateDisplaySwitchInput{
 			Mac:    mac,
 			Status: string(msg.Payload()),
 		}
